@@ -1,13 +1,20 @@
 import 'package:equatable/equatable.dart';
+import 'question.dart';
 
-/// Quiz Entity (basic quiz info under a category)
+/// Quiz Entity
 class Quiz extends Equatable {
   final String id;
   final String name;
   final String description;
+  final List<Question> questions;
 
-  const Quiz({required this.id, required this.name, required this.description});
+  const Quiz({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.questions = const [],
+  });
 
   @override
-  List<Object> get props => [id];
+  List<Object> get props => [id, name, description, questions];
 }
