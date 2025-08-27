@@ -39,7 +39,7 @@ class MainAppShell extends StatelessWidget {
         onTap: (index) => _onItemTapped(index, context),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
+          BottomNavigationBarItem(icon: Icon(Icons.my_library_books_outlined), label: 'Catalog'),
           BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizzes'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

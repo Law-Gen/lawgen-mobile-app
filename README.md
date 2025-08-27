@@ -110,6 +110,7 @@ lib/
             ├── bloc/         # BLoCs or Cubits for state management
             ├── pages/        # The screens/pages for the feature
             └── widgets/      # Reusable UI components specific to the feature
+        
 ```
 
 ---
@@ -199,4 +200,5 @@ We use the standard Dart and Flutter linters to enforce a consistent code style.
     ```bash
     flutter analyze
     ```
+
 Happy coding! 🚀
