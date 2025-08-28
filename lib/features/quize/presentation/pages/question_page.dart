@@ -10,6 +10,7 @@ class QuizQuestionPage extends StatefulWidget {
   final String quizId;
 
   const QuizQuestionPage({Key? key, required this.quizId}) : super(key: key);
+  
 
   @override
   State<QuizQuestionPage> createState() => _QuizQuestionPageState();
@@ -48,7 +49,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
     return Scaffold(
       body: BlocBuilder<QuizBloc, QuizState>(
         builder: (context, state) {
-          if (state is QuizLoading) {
+          if (state is QuizeQuestionLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is QuizLoaded) {
             final Quiz quiz = state.quiz;

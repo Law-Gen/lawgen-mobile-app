@@ -2,11 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../quiz_injection.dart';
 import '../bloc/quiz_bloc.dart';
 
-class QuizHomePage extends StatelessWidget {
+class QuizHomePage extends StatefulWidget {
   const QuizHomePage({super.key});
 
+  /// Factory method to provide the bloc automatically
+  static Widget withBloc() {
+    return BlocProvider(
+      create: (_) => quizSl<QuizBloc>()..add(const LoadQuizCategoriesEvent()),
+      child: const QuizHomePage(),
+    );
+  }
+
+  @override
+  State<QuizHomePage> createState() => _QuizHomePageState();
+}
+
+class _QuizHomePageState extends State<QuizHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,8 +48,12 @@ class QuizHomePage extends StatelessWidget {
         ],
       ),
       body: BlocBuilder<QuizBloc, QuizState>(
+        buildWhen: (previous, current) {
+          return current is QuizCategoriesLoading ||
+              current is QuizCategoriesLoaded;
+        },
         builder: (context, state) {
-          if (state is QuizLoading) {
+          if (state is QuizCategoriesLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is QuizCategoriesLoaded) {
             return Column(
@@ -74,7 +92,11 @@ class QuizHomePage extends StatelessWidget {
                 const SizedBox(height: 16),
                 Expanded(
                   child: BlocBuilder<QuizBloc, QuizState>(
+                    // This child BlocBuilder will now handle its own state changes
                     builder: (context, quizState) {
+                      if (quizState is QuizzesByCategoryLoading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
                       if (quizState is QuizzesByCategoryLoaded) {
                         if (quizState.quizzes.isEmpty) {
                           return const Center(child: Text('No quizzes found'));
@@ -160,7 +182,12 @@ class QuizHomePage extends StatelessWidget {
                                             fontFamily: 'Inter',
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            color: Color.fromARGB(
+                                              255,
+                                              109,
+                                              77,
+                                              77,
+                                            ),
                                           ),
                                         ),
                                       ),

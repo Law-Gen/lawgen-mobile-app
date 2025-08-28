@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "lawgen-mobile-app",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/app/main.dart"
+        },
+        {
+            "name": "lawgen-mobile-app (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "program": "lib/app/main.dart"
+        },
+        {
+            "name": "lawgen-mobile-app (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "program": "lib/app/main.dart"
+        }
+    ]
+}

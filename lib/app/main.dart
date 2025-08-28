@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/quize/quiz_injection.dart';
 import 'router.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await initQuiz(); // Initialize your quiz dependencies
   final approuter = AppRouter();
 
-  runApp( MyApp(router:approuter.router));
+  runApp(MyApp(router: approuter.router));
 }
 
 class MyApp extends StatelessWidget {
@@ -18,13 +22,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return (MaterialApp.router(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       routerConfig: router,
       // routeInformationParser: router.routeInformationParser,
     ));
   }
 }
-
-

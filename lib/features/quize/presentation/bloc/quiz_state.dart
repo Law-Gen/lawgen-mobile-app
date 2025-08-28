@@ -10,8 +10,11 @@ sealed class QuizState extends Equatable {
 // Initial state
 final class QuizInitial extends QuizState {}
 
-// Loading state
-final class QuizLoading extends QuizState {}
+class QuizCategoriesLoading extends QuizState {} // For initial category loading
+
+class QuizzesByCategoryLoading extends QuizState {} // For loading quizzes
+
+class QuizeQuestionLoading extends QuizState {}
 
 // Loaded quiz categories
 final class QuizCategoriesLoaded extends QuizState {

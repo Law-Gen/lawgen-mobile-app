@@ -30,7 +30,7 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
   }) : super(QuizInitial()) {
     // Load all quiz categories
     on<LoadQuizCategoriesEvent>((event, emit) async {
-      emit(QuizLoading());
+      emit(QuizCategoriesLoading());
       final result = await getQuizCategories(
         PageParams(page: event.page, limit: event.limit),
       );
@@ -42,7 +42,8 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
 
     // Load quizzes for a specific category
     on<LoadQuizzesByCategoryEvent>((event, emit) async {
-      emit(QuizLoading());
+      // Emit the specific loading state
+      emit(QuizzesByCategoryLoading());
       final result = await getQuizzesByCategory(
         CategoryPageParams(
           categoryId: event.categoryId,
@@ -58,7 +59,7 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
 
     // Load a quiz with questions
     on<GetQuizByIdEvent>((event, emit) async {
-      emit(QuizLoading());
+      emit(QuizeQuestionLoading());
       final result = await getQuizById(IdParams(event.quizId));
       result.fold(
         (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
@@ -68,7 +69,7 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
 
     // Load questions for a quiz (optional, separate event)
     on<GetQuestionsByQuizIdEvent>((event, emit) async {
-      emit(QuizLoading());
+      emit(QuizeQuestionLoading());
       final result = await getQuestionsByQuizId(IdParams(event.quizId));
       result.fold(
         (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),

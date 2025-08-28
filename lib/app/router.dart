@@ -89,11 +89,11 @@ class MainAppShell extends StatelessWidget {
 class AppRouter {
   // Mock authentication state. In a real app, you would get this from your auth provider/state manager.
   final bool isAuthenticated =
-      false; // Change to `true` to test logged-in routes
-  final bool hasSeenOnboarding = false; // Change to `true` to skip onboarding
+      true; // Change to `true` to test logged-in routes
+  final bool hasSeenOnboarding = true; // Change to `true` to skip onboarding
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: '/quiz',
     routes: [
       // --- Onboarding ---
       GoRoute(
@@ -156,14 +156,14 @@ class AppRouter {
           ),
           GoRoute(
             path: '/quiz',
-            builder: (context, state) => const QuizHomePage(),
+            builder: (context, state) => QuizHomePage.withBloc(),
             routes: [
               // Nested route for a specific quiz
               GoRoute(
                 path: ':quizId', // e.g., /quiz/employment-law-quiz
-                builder: (context, state) => QuizQuestionPage(
-                  quizId : state.pathParameters['quizId']!,
-                ),
+                builder: (context, state) =>
+                
+                    QuizQuestionPage(quizId: state.pathParameters['quizId']!),
                 routes: [
                   // Nested route for quiz results
                   GoRoute(
