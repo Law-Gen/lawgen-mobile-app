@@ -15,9 +15,9 @@ class QuizHomePage extends StatelessWidget {
         backgroundColor: const Color(0xFFF0F4F8),
         elevation: 0,
         title: const Text(
-          "Pick a Card and Roll the Dice",
+          'Pick a Card and Roll the Dice',
           style: TextStyle(
-            fontFamily: "Inter",
+            fontFamily: 'Inter',
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Color(0xFF0D2A4B),
@@ -55,7 +55,7 @@ class QuizHomePage extends StatelessWidget {
                         label: Text(
                           category.name,
                           style: const TextStyle(
-                            fontFamily: "Inter",
+                            fontFamily: 'Inter',
                             color: Colors.white,
                           ),
                         ),
@@ -77,7 +77,7 @@ class QuizHomePage extends StatelessWidget {
                     builder: (context, quizState) {
                       if (quizState is QuizzesByCategoryLoaded) {
                         if (quizState.quizzes.isEmpty) {
-                          return const Center(child: Text("No quizzes found"));
+                          return const Center(child: Text('No quizzes found'));
                         }
 
                         return ListView.builder(
@@ -122,17 +122,17 @@ class QuizHomePage extends StatelessWidget {
                                     Text(
                                       quiz.name,
                                       style: const TextStyle(
-                                        fontFamily: "Inter",
+                                        fontFamily: 'Inter',
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF0D2A4B),
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    Text(
+                                    const Text(
                                       // Duration based on number of questions
-                                      "${quiz.questions.length} Questions | ${quiz.questions.length} Min",
-                                      style: const TextStyle(
+                                      '${10} Questions | ${10} Min',
+                                      style: TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey,
                                       ),
@@ -152,16 +152,12 @@ class QuizHomePage extends StatelessWidget {
                                           ),
                                         ),
                                         onPressed: () {
-                                          // fetch quiz by ID before navigating
-                                          context.read<QuizBloc>().add(
-                                            GetQuizByIdEvent(quizId: quiz.id),
-                                          );
-                                          context.push("/quiz/${quiz.id}");
+                                          context.push('/quiz/${quiz.id}');
                                         },
                                         child: const Text(
-                                          "Play Now",
+                                          'Play Now',
                                           style: TextStyle(
-                                            fontFamily: "Inter",
+                                            fontFamily: 'Inter',
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
@@ -177,7 +173,7 @@ class QuizHomePage extends StatelessWidget {
                         );
                       }
                       return const Center(
-                        child: Text("Select a category to view quizzes"),
+                        child: Text('Select a category to view quizzes'),
                       );
                     },
                   ),
@@ -187,7 +183,7 @@ class QuizHomePage extends StatelessWidget {
           } else if (state is QuizError) {
             return Center(child: Text(state.message));
           }
-          return const Center(child: Text("Load categories to start"));
+          return const Center(child: Text('Load categories to start'));
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -195,9 +191,9 @@ class QuizHomePage extends StatelessWidget {
         selectedItemColor: const Color(0xFF0D2A4B),
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Stats"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
