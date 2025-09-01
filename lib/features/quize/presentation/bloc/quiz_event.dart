@@ -18,6 +18,15 @@ class LoadQuizCategoriesEvent extends QuizEvent {
   List<Object?> get props => [page, limit];
 }
 
+class QuizeCategorySelected extends QuizEvent {
+  final String categoryId;
+
+  const QuizeCategorySelected({required this.categoryId});
+
+  @override
+  List<Object?> get props => [categoryId];
+}
+
 // Load quizzes for a specific category
 class LoadQuizzesByCategoryEvent extends QuizEvent {
   final String categoryId;

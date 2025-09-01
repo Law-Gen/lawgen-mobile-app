@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/quize/domain/entities/quize.dart';
 import '../features/quize/presentation/pages/question_page.dart';
 import '../features/quize/presentation/pages/quize_home_page.dart';
 import '../features/quize/presentation/pages/quize_result_page.dart';
@@ -162,18 +163,22 @@ class AppRouter {
               GoRoute(
                 path: ':quizId', // e.g., /quiz/employment-law-quiz
                 builder: (context, state) =>
-                
-                    QuizQuestionPage(quizId: state.pathParameters['quizId']!),
+                    QuizQuestionPage.withBloc(state.pathParameters['quizId']!),
+
                 routes: [
                   // Nested route for quiz results
                   GoRoute(
                     path: '/results',
                     builder: (context, state) {
                       final data = state.extra as Map<String, dynamic>;
-                      final score = data['score'] as int;
-                      final total = data['total'] as int;
+                      final quiz = data['quiz'] as Quiz;
+                      final userAnswers =
+                          data['userAnswers'] as Map<String, String>;
 
-                      return QuizResultPage(score: score, total: total);
+                      return QuizResultPage(
+                        quiz: quiz,
+                        userAnswers: userAnswers,
+                      );
                     },
                   ),
                 ],

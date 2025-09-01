@@ -1,5 +1,3 @@
-// ignore_for_file: constant_identifier_names, type_literal_in_constant_pattern
-
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
@@ -28,22 +26,73 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
     required this.getQuizById,
     required this.getQuestionsByQuizId,
   }) : super(QuizInitial()) {
-    // Load all quiz categories
-    on<LoadQuizCategoriesEvent>((event, emit) async {
-      emit(QuizCategoriesLoading());
-      final result = await getQuizCategories(
-        PageParams(page: event.page, limit: event.limit),
-      );
-      result.fold(
-        (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
-        (categories) => emit(QuizCategoriesLoaded(categories: categories)),
-      );
-    });
+    on<LoadQuizCategoriesEvent>(_onLoadQuizCategories);
+    on<LoadQuizzesByCategoryEvent>(_onLoadQuizzesByCategory);
+    on<GetQuizByIdEvent>(_onGetQuizById);
+    on<GetQuestionsByQuizIdEvent>(_onGetQuestionsByQuizId);
+  }
 
-    // Load quizzes for a specific category
-    on<LoadQuizzesByCategoryEvent>((event, emit) async {
-      // Emit the specific loading state
-      emit(QuizzesByCategoryLoading());
+  Future<void> _onLoadQuizCategories(
+    LoadQuizCategoriesEvent event,
+    Emitter<QuizState> emit,
+  ) async {
+    emit(QuizCategoriesLoading());
+    final result = await getQuizCategories(
+      PageParams(page: event.page, limit: event.limit),
+    );
+
+    await result.fold(
+      (failure) async =>
+          emit(QuizError(message: _mapFailureToMessage(failure))),
+      (categories) async {
+        if (categories.isEmpty) {
+          emit(
+            const QuizCategoriesLoaded(
+              categories: [],
+              quizzes: [],
+              selectedCategoryId: null,
+            ),
+          );
+        } else {
+          // Auto-load quizzes for the first category
+          final firstCategoryId = categories.first.id;
+          final quizzesResult = await getQuizzesByCategory(
+            CategoryPageParams(
+              categoryId: firstCategoryId,
+              page: event.page,
+              limit: event.limit,
+            ),
+          );
+          quizzesResult.fold(
+            (failure) =>
+                emit(QuizError(message: _mapFailureToMessage(failure))),
+            (quizzes) => emit(
+              QuizCategoriesLoaded(
+                categories: categories,
+                quizzes: quizzes,
+                selectedCategoryId: firstCategoryId,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _onLoadQuizzesByCategory(
+    LoadQuizzesByCategoryEvent event,
+    Emitter<QuizState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is QuizCategoriesLoaded) {
+      // Emit a state to show the quizzes are loading, but keep the old UI data
+      emit(
+        currentState.copyWith(
+          isQuizzesLoading: true,
+          selectedCategoryId: event.categoryId,
+        ),
+      );
+
       final result = await getQuizzesByCategory(
         CategoryPageParams(
           categoryId: event.categoryId,
@@ -51,34 +100,46 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
           limit: event.limit,
         ),
       );
-      result.fold(
-        (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
-        (quizzes) => emit(QuizzesByCategoryLoaded(quizzes: quizzes)),
-      );
-    });
 
-    // Load a quiz with questions
-    on<GetQuizByIdEvent>((event, emit) async {
-      emit(QuizeQuestionLoading());
-      final result = await getQuizById(IdParams(event.quizId));
       result.fold(
         (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
-        (quiz) => emit(QuizLoaded(quiz: quiz)),
+        (quizzes) => emit(
+          currentState.copyWith(
+            quizzes: quizzes,
+            selectedCategoryId: event.categoryId,
+            isQuizzesLoading: false,
+          ),
+        ),
       );
-    });
+    }
+  }
 
-    // Load questions for a quiz (optional, separate event)
-    on<GetQuestionsByQuizIdEvent>((event, emit) async {
-      emit(QuizeQuestionLoading());
-      final result = await getQuestionsByQuizId(IdParams(event.quizId));
-      result.fold(
-        (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
-        (questions) => emit(QuizQuestionsLoaded(questions: questions)),
-      );
-    });
+  Future<void> _onGetQuizById(
+    GetQuizByIdEvent event,
+    Emitter<QuizState> emit,
+  ) async {
+    emit(QuizeQuestionLoading());
+    final result = await getQuizById(IdParams(event.quizId));
+    result.fold(
+      (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
+      (quiz) => emit(QuizLoaded(quiz: quiz)),
+    );
+  }
+
+  Future<void> _onGetQuestionsByQuizId(
+    GetQuestionsByQuizIdEvent event,
+    Emitter<QuizState> emit,
+  ) async {
+    emit(QuizeQuestionLoading());
+    final result = await getQuestionsByQuizId(IdParams(event.quizId));
+    result.fold(
+      (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
+      (questions) => emit(QuizQuestionsLoaded(questions: questions)),
+    );
   }
 }
 
+// ... (failure mapping code remains the same)
 const String SERVER_FAILURE_MESSAGE = 'Server Failure';
 const String NETWORK_FAILURE_MESSAGE = 'No Internet Connection';
 const String CACHE_FAILURE_MESSAGE = 'Cache Failure';

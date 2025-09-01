@@ -7,26 +7,50 @@ sealed class QuizState extends Equatable {
   List<Object?> get props => [];
 }
 
-// Initial state
 final class QuizInitial extends QuizState {}
 
-class QuizCategoriesLoading extends QuizState {} // For initial category loading
-
-class QuizzesByCategoryLoading extends QuizState {} // For loading quizzes
+class QuizCategoriesLoading extends QuizState {}
 
 class QuizeQuestionLoading extends QuizState {}
 
-// Loaded quiz categories
 final class QuizCategoriesLoaded extends QuizState {
   final List<QuizCategory> categories;
+  final List<Quiz> quizzes;
+  final String? selectedCategoryId;
+  final bool isQuizzesLoading; // To show loading indicator for quizzes only
 
-  const QuizCategoriesLoaded({required this.categories});
+  const QuizCategoriesLoaded({
+    required this.categories,
+    required this.quizzes,
+    this.selectedCategoryId,
+    this.isQuizzesLoading = false,
+  });
+
+  QuizCategoriesLoaded copyWith({
+    List<QuizCategory>? categories,
+    List<Quiz>? quizzes,
+    String? selectedCategoryId,
+    bool? isQuizzesLoading,
+  }) {
+    return QuizCategoriesLoaded(
+      categories: categories ?? this.categories,
+      quizzes: quizzes ?? this.quizzes,
+      selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
+      isQuizzesLoading: isQuizzesLoading ?? this.isQuizzesLoading,
+    );
+  }
 
   @override
-  List<Object?> get props => [categories];
+  List<Object?> get props => [
+    categories,
+    quizzes,
+    selectedCategoryId,
+    isQuizzesLoading,
+  ];
 }
 
-// Loaded quizzes for a category
+// This state can be removed if not used elsewhere, as QuizCategoriesLoaded
+// now handles quiz lists. If it's used on other pages, it can be kept.
 final class QuizzesByCategoryLoaded extends QuizState {
   final List<Quiz> quizzes;
 
@@ -36,7 +60,6 @@ final class QuizzesByCategoryLoaded extends QuizState {
   List<Object?> get props => [quizzes];
 }
 
-// Loaded quiz with questions
 final class QuizLoaded extends QuizState {
   final Quiz quiz;
 
@@ -46,7 +69,6 @@ final class QuizLoaded extends QuizState {
   List<Object?> get props => [quiz];
 }
 
-// Loaded only questions
 final class QuizQuestionsLoaded extends QuizState {
   final List<Question> questions;
 
@@ -56,7 +78,6 @@ final class QuizQuestionsLoaded extends QuizState {
   List<Object?> get props => [questions];
 }
 
-// Error state
 final class QuizError extends QuizState {
   final String message;
 
