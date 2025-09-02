@@ -106,10 +106,12 @@ lib/
         │   ├── entities/     # Core business objects
         │   ├── repositories/ # Abstract repository contracts
         │   └── usecases/     # Business logic interactors
-        └── presentation/
-            ├── bloc/         # BLoCs or Cubits for state management
-            ├── pages/        # The screens/pages for the feature
-            └── widgets/      # Reusable UI components specific to the feature
+        ├── presentation/
+        │    ├── bloc/         # BLoCs or Cubits for state management
+        │    ├── pages/        # The screens/pages for the feature
+        │    └── widgets/      # Reusable UI components specific to th 
+        |
+        └──dependency/     
 ```
 
 ---
