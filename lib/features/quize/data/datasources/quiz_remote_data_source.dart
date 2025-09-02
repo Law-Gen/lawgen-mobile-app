@@ -153,12 +153,14 @@ class QuizRemoteDataSourceImpl implements QuizRemoteDataSource {
         id: 'quiz_id_1',
         name: 'Inheritance Law Basics',
         description: 'Test your knowledge of Ethiopian inheritance laws.',
+        totalQuestion: '2',
         questions: [], // questions will be fetched separately
       ),
       const QuizModel(
         id: 'quiz_id_2',
         name: 'Contract Law',
         description: 'Basics of contract law.',
+        totalQuestion: '2',
         questions: [],
       ),
     ];
@@ -171,6 +173,7 @@ class QuizRemoteDataSourceImpl implements QuizRemoteDataSource {
       id: 'quiz_id_1',
       name: 'Inheritance Law Basics',
       description: 'Learn about inheritance rules.',
+      totalQuestion: '2',
       questions: [
         QuestionModel(
           id: 'q1',

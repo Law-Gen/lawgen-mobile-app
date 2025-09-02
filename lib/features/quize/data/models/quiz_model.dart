@@ -1,11 +1,12 @@
 import '../../domain/entities/quize.dart';
-import 'question_model.dart'; // ✅ You’ll need this for QuestionModel
+import 'question_model.dart';
 
 class QuizModel extends Quiz {
   const QuizModel({
     required super.id,
     required super.name,
     required super.description,
+    required super.totalQuestion,
     super.questions = const [],
   });
 
@@ -15,21 +16,31 @@ class QuizModel extends Quiz {
       id: quiz.id,
       name: quiz.name,
       description: quiz.description,
-      questions: quiz.questions, // already a List<Question>
+      totalQuestion: quiz.totalQuestion,
+      questions: quiz.questions,
     );
   }
 
   // 🧠 Convert JSON → model
   factory QuizModel.fromJson(Map<String, dynamic> json) {
+    final questions =
+        (json['questions'] as List<dynamic>?)
+            ?.map((q) => QuestionModel.fromJson(q as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    final totalQ = json['total_questions'] != null
+        ? json['total_questions'].toString()
+        : questions.isNotEmpty
+        ? questions.length.toString()
+        : '0';
+
     return QuizModel(
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
-      questions:
-          (json['questions'] as List<dynamic>?)
-              ?.map((q) => QuestionModel.fromJson(q as Map<String, dynamic>))
-              .toList() ??
-          [],
+      totalQuestion: totalQ,
+      questions: questions,
     );
   }
 
@@ -39,6 +50,7 @@ class QuizModel extends Quiz {
       'id': id,
       'name': name,
       'description': description,
+      'total_questions': totalQuestion,
       'questions': questions
           .map(
             (q) => (q is QuestionModel)
@@ -55,6 +67,7 @@ class QuizModel extends Quiz {
       id: id,
       name: name,
       description: description,
+      totalQuestion: totalQuestion,
       questions: questions,
     );
   }

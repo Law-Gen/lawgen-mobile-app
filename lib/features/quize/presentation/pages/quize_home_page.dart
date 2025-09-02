@@ -215,31 +215,31 @@ class _QuizHomePageState extends State<QuizHomePage> {
                     ),
                     const SizedBox(height: 12),
                     // Quiz Details
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.help_outline,
                           size: 18,
                           color: TEXT_COLOR_SECONDARY,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          '${10} Questions',
-                          style: TextStyle(
+                          quiz.totalQuestion,
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
                             color: TEXT_COLOR_SECONDARY,
                           ),
                         ),
-                        SizedBox(width: 24),
-                        Icon(
+                        const SizedBox(width: 24),
+                        const Icon(
                           Icons.timer_outlined,
                           size: 18,
                           color: TEXT_COLOR_SECONDARY,
                         ),
-                        SizedBox(width: 6),
-                        Text(
+                        const SizedBox(width: 6),
+                        const Text(
                           '${10} Min',
                           style: TextStyle(
                             fontFamily: 'Inter',
