@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'sign_in_page.dart';
-import 'sign_up_page.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../app/router.dart'; 
 
 class OnboardingPage extends StatefulWidget {
-  const OnboardingPage({super.key});
+  final AppRouter router;
+  const OnboardingPage({super.key, required this.router});
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
@@ -36,20 +37,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
+  void _finishOnboardingAndNavigate(String route) async {
+    await widget.router.setOnboardingSeen();
+    if (mounted) {
+      context.go(route);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Soft background image
           Image.asset(
-            'assets/images/image.jpg', // Your soft background image
+            'assets/images/image.jpg',
             fit: BoxFit.cover,
-            color: Colors.black.withOpacity(0.15), // Reduce opacity for softness
+            color: Colors.black.withOpacity(0.15),
             colorBlendMode: BlendMode.darken,
           ),
-
           PageView(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
@@ -59,12 +65,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
               });
             },
             children: [
-              // First Page
               Padding(
-                padding: const EdgeInsets.all(32.0),
+                padding: const EdgeInsets.all(42.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Text(
                       "Welcome to LawGen",
@@ -73,6 +77,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -109,8 +114,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   ],
                 ),
               ),
-
-              // Second Page
               Padding(
                 padding: const EdgeInsets.all(32.0),
                 child: Column(
@@ -132,14 +135,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     const SizedBox(height: 30),
                     ElevatedButton(
                       onPressed: _agreementChecked
-                          ? () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SignInPage(),
-                                ),
-                              );
-                            }
+                          ? () => _finishOnboardingAndNavigate('/signin')
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
@@ -159,14 +155,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: _agreementChecked
-                          ? () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SignUpPage(),
-                                ),
-                              );
-                            }
+                          ? () => _finishOnboardingAndNavigate('/chat')
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,

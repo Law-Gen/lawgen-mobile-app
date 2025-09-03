@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
-import 'otp_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -54,13 +54,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ).showSnackBar(SnackBar(content: Text(state.message)));
           } else if (state is ForgetPasswordSent) {
             setState(() => _isLoading = false);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    OtpPage(email: _emailController.text.trim()),
-              ),
-            );
+            context.go('/otppage', extra: _emailController.text.trim());
           }
         },
         child: SafeArea(
@@ -77,7 +71,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                        context.go('/signin');
+                      },
                       ),
                       SvgPicture.asset(
                         'assets/logo/logo.svg',

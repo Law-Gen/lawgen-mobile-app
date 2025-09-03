@@ -1,3 +1,7 @@
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart'; // assuming sl is here
+// import '../bloc/profile_bloc.dart';
+
 // class ProfilePage extends StatelessWidget {
 //   const ProfilePage({super.key});
 
@@ -22,20 +26,44 @@
 //                 Navigator.pushNamed(context, "/subscriptionPage");
 //               },
 //             ),
+//             // The new Logout button
+//             BlocBuilder<ProfileBloc, ProfileState>(
+//               builder: (context, state) {
+//                 // We only show the button if the profile is loaded.
+//                 if (state is ProfileLoaded) {
+//                   return IconButton(
+//                     icon: const Icon(Icons.logout),
+//                     onPressed: () {
+//                       BlocProvider.of<ProfileBloc>(context).add(LogoutEvent());
+//                     },
+//                   );
+//                 }
+//                 return const SizedBox();
+//               },
+//             ),
 //           ],
 //         ),
-//         body: BlocBuilder<ProfileBloc, ProfileState>(
-//           builder: (context, state) {
-//             if (state is ProfileLoading) {
-//               return const Center(child: CircularProgressIndicator());
-//             } else if (state is ProfileLoaded) {
-//               final profile = state.profile;
-//               return ProfileForm(profile: profile);
-//             } else if (state is ProfileError) {
-//               return Center(child: Text(state.message));
+//         // Use BlocListener to handle navigation on state changes
+//         body: BlocListener<ProfileBloc, ProfileState>(
+//           listener: (context, state) {
+//             // If the state is ProfileLoggedOut, navigate to the sign-in page
+//             if (state is ProfileLoggedOut) {
+//               Navigator.pushReplacementNamed(context, "/signInPage");
 //             }
-//             return const SizedBox();
 //           },
+//           child: BlocBuilder<ProfileBloc, ProfileState>(
+//             builder: (context, state) {
+//               if (state is ProfileLoading) {
+//                 return const Center(child: CircularProgressIndicator());
+//               } else if (state is ProfileLoaded) {
+//                 final profile = state.profile;
+//                 return ProfileBloc(profile: profile);
+//               } else if (state is ProfileError) {
+//                 return Center(child: Text(state.message));
+//               }
+//               return const SizedBox();
+//             },
+//           ),
 //         ),
 //       ),
 //     );

@@ -1,12 +1,12 @@
 // import 'package:flutter_bloc/flutter_bloc.dart';
+// import '../../data/models/profile_model.dart';
 // import '../../domain/entities/profile.dart';
 // import '../../domain/usecases/getprofile_usecase.dart';
 // import '../../domain/usecases/update_profile_usecase.dart';
 // import '../../domain/usecases/change_password_usecase.dart';
 // import '../../domain/usecases/logout_usecase.dart';
-
-// part 'profile_event.dart';
-// part 'profile_state.dart';
+// import '../../presentation/bloc/profile_event.dart';
+// import '../../presentation/bloc/profile_state.dart';
 
 // class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 //   final GetProfile getProfile;
@@ -31,16 +31,31 @@
 
 //     on<UpdateProfileEvent>((event, emit) async {
 //       emit(ProfileLoading());
-//       final result = await updateProfile(event.profile);
+//       final result = await updateProfile.call(profile:event.profile);
 //       result.fold(
 //         (failure) => emit(ProfileError("Failed to update profile")),
 //         (profile) => emit(ProfileLoaded(profile)),
 //       );
 //     });
 
+//     on<ChangePasswordEvent>((event, emit) async {
+//       emit(ProfileLoading());
+//       final result = await changePassword(
+//         oldPass: event.oldPassword,
+//         newPass: event.newPassword,
+//       );
+//       result.fold(
+//         (failure) => emit(ProfileError("Failed to change password")),
+//         (_) => emit(ProfilePasswordChanged()),
+//       );
+//     });
+
 //     on<LogoutEvent>((event, emit) async {
-//       await logout();
-//       emit(ProfileLoggedOut());
+//       final result = await logout();
+//       result.fold(
+//         (failure) => emit(ProfileError("Failed to logout")),
+//         (_) => emit(ProfileLoggedOut()),
+//       );
 //     });
 //   }
 // }

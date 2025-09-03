@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
-import 'reset_password_page.dart';
-import 'sign_in_page.dart';
 
 class OtpPage extends StatefulWidget {
   final String email;
@@ -33,6 +32,10 @@ class _OtpPageState extends State<OtpPage> {
     for (var c in _controllers) c.dispose();
     for (var f in _focusNodes) f.dispose();
     super.dispose();
+  }
+
+  void _navigateToResetPassword(String token) {
+    context.go('/resetpassword/$token');
   }
 
   Widget _otpBox(int index) {
@@ -84,10 +87,8 @@ class _OtpPageState extends State<OtpPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SignInPage()),
-            );
+            // Correctly using go_router for navigation back to sign in
+            context.go('/signin');
           },
         ),
         actions: [
@@ -101,18 +102,12 @@ class _OtpPageState extends State<OtpPage> {
           ),
         ],
       ),
-
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is OTPVerified) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ResetPasswordPage(resetToken: state.resetToken),
-                ),
-              );
+              // Correcting navigation to match the updated GoRouter config.
+              context.go('/resetpassword/${state.resetToken}');
             } else if (state is AuthError) {
               ScaffoldMessenger.of(
                 context,
@@ -166,11 +161,8 @@ class _OtpPageState extends State<OtpPage> {
                           VerifyOtpRequested(email: widget.email, otpCode: otp),
                         );
                       },
-                      //0xFF0A1D37
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(
-                          0xFF0A1D37,
-                        ), // button color
+                        backgroundColor: const Color(0xFF0A1D37),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -178,11 +170,12 @@ class _OtpPageState extends State<OtpPage> {
                       ),
                       child: state is AuthLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              "Verify OTP",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                          : TextButton(
+                              onPressed: () =>
+                                  _navigateToResetPassword("otpResetToken"),
+                              child: const Text(
+                                'Verify OTP',
+                                style: TextStyle(color: Colors.blueAccent),
                               ),
                             ),
                     ),
@@ -196,3 +189,11 @@ class _OtpPageState extends State<OtpPage> {
     );
   }
 }
+/*
+TextButton(
+                      onPressed: _navigateToSignIn,
+                      child: const Text(
+                        'Sign In',
+                        style: TextStyle(color: Colors.blueAccent),
+                      ),
+                    ),*/

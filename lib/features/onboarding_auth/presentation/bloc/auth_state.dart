@@ -1,11 +1,5 @@
-import 'package:equatable/equatable.dart';
-import '../../domain/entities/user.dart';
-
-abstract class AuthState extends Equatable {
+abstract class AuthState {
   const AuthState();
-
-  @override
-  List<Object?> get props => [];
 }
 
 class AuthInitial extends AuthState {
@@ -17,11 +11,17 @@ class AuthLoading extends AuthState {
 }
 
 class Authenticated extends AuthState {
-  const Authenticated();
+  final bool fromSignIn;
+  const Authenticated({this.fromSignIn = true});
 }
 
 class Unauthenticated extends AuthState {
   const Unauthenticated();
+}
+
+class AuthError extends AuthState {
+  final String message;
+  const AuthError(this.message);
 }
 
 class ForgetPasswordSent extends AuthState {
@@ -32,34 +32,16 @@ class PasswordResetSuccess extends AuthState {
   const PasswordResetSuccess();
 }
 
-class OTPSent extends AuthState {
-  const OTPSent();
-}
-
 class OTPVerified extends AuthState {
   final String resetToken;
   const OTPVerified(this.resetToken);
 }
-
 
 class PasswordVerified extends AuthState {
   const PasswordVerified();
 }
 
 class UserLoaded extends AuthState {
-  final User user;
-
+  final dynamic user;
   const UserLoaded(this.user);
-
-  @override
-  List<Object?> get props => [user];
-}
-
-class AuthError extends AuthState {
-  final String message;
-
-  const AuthError(this.message);
-
-  @override
-  List<Object?> get props => [message];
 }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../presentation/pages/sign_in_page.dart'; // Import your Sign In page
+import 'package:go_router/go_router.dart';
 
 class SuccessResetPage extends StatelessWidget {
   const SuccessResetPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    void _navigateToSignIn() {
+      context.go('/signin'); // ✅ use context from build
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8F5),
       body: Padding(
@@ -14,11 +18,7 @@ class SuccessResetPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 100,
-            ),
+            const Icon(Icons.check_circle, color: Colors.green, size: 100),
             const SizedBox(height: 24),
             const Text(
               "Password Reset Successful!",
@@ -39,13 +39,8 @@ class SuccessResetPage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignInPage()),
-                    (route) => false, // clears all previous routes
-                  );
-                },
+                onPressed:
+                    _navigateToSignIn, // ✅ use the function defined inside build
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0A1D37),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -54,11 +49,11 @@ class SuccessResetPage extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  "Back to Login",
-                  style: TextStyle(fontSize: 18, color: Colors.white),
+                  'Sign In',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

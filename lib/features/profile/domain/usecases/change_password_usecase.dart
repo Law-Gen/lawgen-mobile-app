@@ -7,7 +7,13 @@ class ChangePassword {
   final ProfileRepository repository;
   ChangePassword(this.repository);
 
-  Future<Either<Failures, void>> call(String oldPass, String newPass) async {
-    return await repository.changePassword(oldPass, newPass);
+  Future<Either<Failures, void>> call({
+    required String oldPass,
+    required String newPass,}
+  ) async {
+    return await repository.changePassword(
+      oldPass, 
+      newPass,
+    );
   }
 }

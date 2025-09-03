@@ -1,7 +1,14 @@
-// auth_event.dart
-abstract class AuthEvent {}
+abstract class AuthEvent {
+  const AuthEvent();
+}
 
 class AppStarted extends AuthEvent {}
+
+class SignInRequested extends AuthEvent {
+  final String email;
+  final String password;
+  const SignInRequested({required this.email, required this.password});
+}
 
 class SignUpRequested extends AuthEvent {
   final String firstName;
@@ -10,8 +17,7 @@ class SignUpRequested extends AuthEvent {
   final String password;
   final String birthDate;
   final String gender;
-
-  SignUpRequested({
+  const SignUpRequested({
     required this.firstName,
     required this.lastName,
     required this.email,
@@ -21,36 +27,31 @@ class SignUpRequested extends AuthEvent {
   });
 }
 
-class SignInRequested extends AuthEvent {
-  final String email;
-  final String password;
-
-  SignInRequested({required this.email, required this.password});
-}
+class LogoutRequested extends AuthEvent {}
 
 class ForgetPasswordRequested extends AuthEvent {
   final String email;
-  ForgetPasswordRequested({required this.email});
+  const ForgetPasswordRequested({required this.email});
 }
 
 class ResetPasswordRequested extends AuthEvent {
   final String token;
   final String newPassword;
-
-  ResetPasswordRequested({required this.token, required this.newPassword});
-}
-
-class VerifyPasswordRequested extends AuthEvent {
-  final String password;
-  VerifyPasswordRequested({required this.password});
+  const ResetPasswordRequested({
+    required this.token,
+    required this.newPassword,
+  });
 }
 
 class VerifyOtpRequested extends AuthEvent {
   final String email;
   final String otpCode;
-  VerifyOtpRequested({required this.email, required this.otpCode});
+  const VerifyOtpRequested({required this.email, required this.otpCode});
+}
+
+class VerifyPasswordRequested extends AuthEvent {
+  final String password;
+  const VerifyPasswordRequested({required this.password});
 }
 
 class GetMeRequested extends AuthEvent {}
-
-class LogoutRequested extends AuthEvent {}

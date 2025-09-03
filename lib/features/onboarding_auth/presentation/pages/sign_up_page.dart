@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
@@ -55,7 +56,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _navigateToSignIn() {
-    Navigator.pushNamed(context, '/signIn');
+    context.go('/signin');
   }
 
   @override
@@ -291,7 +292,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         context,
                       ).showSnackBar(SnackBar(content: Text(state.message)));
                     } else if (state is Authenticated) {
-                      Navigator.pushReplacementNamed(context, '/chat');
+                      context.go('/chat');
                     }
                   },
                   child: const SizedBox.shrink(),

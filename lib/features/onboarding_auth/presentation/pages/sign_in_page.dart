@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -17,7 +18,6 @@ class _SignInPageState extends State<SignInPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  //bool _isAmharic = false;
 
   void _handleSignIn() {
     if (_formKey.currentState!.validate()) {
@@ -31,15 +31,15 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   void _navigateToSignUp() {
-    Navigator.pushNamed(context, '/signup');
+    context.go('/signup');
   }
 
   void _navigateToForgotPassword() {
-    Navigator.pushNamed(context, '/forgotPassword');
+    context.go('/forgotpassword');
   }
 
   void _navigateBack() {
-    Navigator.pushNamed(context, '/chat');
+    context.go('/chat');
   }
 
   @override
@@ -47,19 +47,6 @@ class _SignInPageState extends State<SignInPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      fillColor: const Color(0xFFF8F4F0),
-      filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      prefixIcon: Icon(icon),
-    );
   }
 
   @override
@@ -73,8 +60,8 @@ class _SignInPageState extends State<SignInPage> {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(state.message)));
-            } else if (state is Authenticated) {
-              Navigator.pushReplacementNamed(context, '/chat');
+            } else if (state is Authenticated && state.fromSignIn) {
+              context.go('/chat'); // ✅ Only after a real sign-in
             }
           },
           child: SingleChildScrollView(
@@ -84,7 +71,6 @@ class _SignInPageState extends State<SignInPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Top Row: Back button left, Language toggle & Logo right
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -100,8 +86,6 @@ class _SignInPageState extends State<SignInPage> {
                     ],
                   ),
                   const SizedBox(height: 48.0),
-
-                  // Welcome Message
                   Text(
                     'Welcome Back',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -111,8 +95,6 @@ class _SignInPageState extends State<SignInPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48.0),
-
-                  // Email
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -130,14 +112,10 @@ class _SignInPageState extends State<SignInPage> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFFD8DADC)),
                       ),
-
                       prefixIcon: const Icon(Icons.email_outlined),
                     ),
                   ),
-
                   const SizedBox(height: 16.0),
-
-                  // Password
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
@@ -149,7 +127,7 @@ class _SignInPageState extends State<SignInPage> {
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
+                        borderSide: const BorderSide(
                           color: Color(0xFFD8DADC),
                           width: 2,
                         ),
@@ -170,8 +148,6 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 8.0),
-
-                  // Forgot Password
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -183,8 +159,6 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 24.0),
-
-                  // Sign In Button
                   ElevatedButton(
                     onPressed: _handleSignIn,
                     style: ElevatedButton.styleFrom(
@@ -201,8 +175,6 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 24.0),
-
-                  // OR Separator
                   Row(
                     children: const [
                       Expanded(child: Divider()),
@@ -214,8 +186,6 @@ class _SignInPageState extends State<SignInPage> {
                     ],
                   ),
                   const SizedBox(height: 24.0),
-
-                  // Google Sign-In
                   OutlinedButton(
                     onPressed: () {
                       print('Sign In with Google pressed');
@@ -241,8 +211,6 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                   ),
                   const SizedBox(height: 24.0),
-
-                  // Sign Up Option
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
