@@ -1,6 +1,7 @@
 // lib/features/profile_and_premium/presentation/pages/my_subscription_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../dependency_injection.dart';
 import '../../domain/entities/subscription_status.dart';
 import '../../domain/usecases/get_subscription_status.dart';
@@ -16,6 +17,7 @@ class _MySubscriptionPageState extends State<MySubscriptionPage> {
   final GetSubscriptionStatus getSubscriptionStatus =
       sl<GetSubscriptionStatus>();
   SubscriptionStatus? _status;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -24,8 +26,14 @@ class _MySubscriptionPageState extends State<MySubscriptionPage> {
   }
 
   Future<void> _loadSubscription() async {
+    setState(() => _isLoading = true);
     final status = await getSubscriptionStatus();
-    setState(() => _status = status);
+    if (mounted) {
+      setState(() {
+        _status = status;
+        _isLoading = false;
+      });
+    }
   }
 
   String _formatDate(DateTime? date) =>
@@ -35,42 +43,84 @@ class _MySubscriptionPageState extends State<MySubscriptionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('My Subscription')),
-      body: _status == null
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : !_status!.isActive
-              ? const Center(child: Text('No active subscription.'))
+          : _status == null || !_status!.isActive
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Text(
+                      'You do not have an active subscription.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                )
               : Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(children: [
-                    ListTile(
-                        title: const Text('Current Plan'),
-                        subtitle: Text(_status!.planName ?? 'N/A')),
-                    ListTile(
-                      title: const Text('Status'),
-                      subtitle: Text(
-                        _status!.status ?? 'N/A',
-                        style: TextStyle(
-                            color:
-                                _status!.isActive ? Colors.green : Colors.red,
-                            fontWeight: FontWeight.bold),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildInfoRow(
+                              'Current Plan', _status!.planName ?? 'N/A'),
+                          const Divider(),
+                          _buildInfoRow(
+                            'Status',
+                            _status!.status ?? 'N/A',
+                            valueStyle: TextStyle(
+                              color: _status!.isActive
+                                  ? AppColors.success
+                                  : AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Divider(),
+                          _buildInfoRow('Subscription Start Date',
+                              _formatDate(_status!.startDate)),
+                          const Divider(),
+                          _buildInfoRow('Next Billing Date',
+                              _formatDate(_status!.endDate)),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () => showCancelSubscriptionDialog(
+                                  context,
+                                  onConfirm: _loadSubscription),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    AppColors.primary.withOpacity(0.1),
+                                foregroundColor: AppColors.primary,
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                              ),
+                              child: const Text('Cancel Subscription'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    ListTile(
-                        title: const Text('Start Date'),
-                        subtitle: Text(_formatDate(_status!.startDate))),
-                    ListTile(
-                        title: const Text('End Date'),
-                        subtitle: Text(_formatDate(_status!.endDate))),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () => showCancelSubscriptionDialog(context,
-                          onConfirm: _loadSubscription),
-                      style:
-                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text('Cancel Subscription'),
-                    ),
-                  ]),
+                  ),
                 ),
+    );
+  }
+
+  Widget _buildInfoRow(String title, String value, {TextStyle? valueStyle}) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: textTheme.bodyLarge),
+          Text(value,
+              style: valueStyle ??
+                  textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }
