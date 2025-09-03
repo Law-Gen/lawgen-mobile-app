@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+//import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'core/errors/network/network_info.dart';
+//import 'core/errors/network/network_info.dart';
 import 'features/onboarding_auth/data/datasources/auth_local_datasource.dart';
 import 'features/onboarding_auth/data/datasources/auth_remote_datasource.dart';
 import 'features/onboarding_auth/data/repositories/auth_repository_impl.dart';
@@ -28,7 +28,15 @@ import 'features/onboarding_auth/presentation/pages/sign_up_page.dart';
 import 'features/onboarding_auth/presentation/pages/success_page.dart';
 import 'features/onboarding_auth/presentation/bloc/auth_bloc.dart';
 import 'features/onboarding_auth/presentation/bloc/auth_event.dart';
-import 'features/onboarding_auth/presentation/bloc/auth_state.dart';
+// import 'features/onboarding_auth/presentation/bloc/auth_state.dart';
+// import 'features/profile/presentation/pages/profile_page.dart';
+// import 'features/profile/domain/usecases/change_password_usecase.dart';
+// import 'features/profile/domain/usecases/getprofile_usecase.dart';
+// import 'features/profile/domain/usecases/logout_usecase.dart';
+// import 'features/profile/domain/usecases/update_profile_usecase.dart';
+// import 'features/profile/presentation/bloc/profile_bloc.dart';
+// import 'features/profile/presentation/bloc/Profile_event.dart';
+// import 'features/profile/presentation/bloc/profile_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +69,7 @@ class MyApp extends StatelessWidget {
         getMeUseCase: GetMeUseCase(authRepository),
         logoutUseCase: LogoutUseCase(authRepository),
         checkAuthStatusUseCase: CheckAuthStatusUseCase(authRepository),
+        
       )..add(AppStarted()),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
