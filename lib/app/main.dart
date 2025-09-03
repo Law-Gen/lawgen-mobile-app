@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/catalog/catalog_injection.dart';
 import '../features/quize/quiz_injection.dart';
 import 'router.dart';
 
-Future<void> main() async {
+Future<void> main() async { 
   WidgetsFlutterBinding.ensureInitialized();
 
   await initQuiz(); // Initialize your quiz dependencies
+  await initCatalog(); // Initialize your Catalog dependencies
   final approuter = AppRouter();
 
   runApp(MyApp(router: approuter.router));

@@ -14,7 +14,7 @@ import 'presentation/bloc/legal_content_bloc.dart'; // Adjust this path
 // Service Locator instance
 final catalogSL = GetIt.instance;
 
-Future<void> init() async {
+Future<void> initCatalog() async {
   //================================================
   // Feature - Legal Content
   //================================================
@@ -48,26 +48,32 @@ Future<void> init() async {
   );
 
   //! Data sources
+  // catalogSL.registerLazySingleton<LegalDocumentRemoteDataSource>(
+  //   () => LegalDocumentRemoteDataSourceImpl(
+  //     // <--- THIS IS THE REAL ONE
+  //     client: catalogSL(),
+  //     secureStorage: catalogSL(),
+  //   ),
+  // );
+
   catalogSL.registerLazySingleton<LegalDocumentRemoteDataSource>(
-    () => LegalDocumentRemoteDataSourceImpl(
-      client: catalogSL(),
-      secureStorage: catalogSL(),
-    ),
+    // Use the dummy implementation for testing
+    () => DummyLegalDocumentRemoteDataSourceImpl(),
   );
 
   //================================================
   // Core
   //================================================
-  catalogSL.registerLazySingleton<NetworkInfo>(
-    () => NetworkInfoImpl(catalogSL()),
-  );
+  // catalogSL.registerLazySingleton<NetworkInfo>(
+  //   () => NetworkInfoImpl(catalogSL()),
+  // );
 
   //================================================
   // External
   //================================================
-  catalogSL.registerLazySingleton(() => http.Client());
-  catalogSL.registerLazySingleton(
-    () => InternetConnectionChecker.createInstance(),
-  );
+  // catalogSL.registerLazySingleton(() => http.Client());
+  // catalogSL.registerLazySingleton(
+  //   () => InternetConnectionChecker.createInstance(),
+  // );
   catalogSL.registerLazySingleton(() => const FlutterSecureStorage());
 }

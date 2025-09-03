@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/legal_document.dart';
-import '../../injection_container.dart';
+import '../../catalog_injection.dart';
 import '../bloc/legal_content_bloc.dart';
 import 'legal_categories_page.dart';
 
@@ -51,7 +51,7 @@ class LegalArticlesPage extends StatelessWidget {
               ),
             ),
             const Text(
-              "Rights and responsibilities",
+              'Rights and responsibilities',
               style: TextStyle(color: kSecondaryTextColor, fontSize: 14),
             ),
           ],
@@ -113,10 +113,10 @@ class _ArticleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Placeholder data
-    final level = article.name.contains("Discrimination")
-        ? "intermediate"
-        : "beginner";
-    final time = level == "beginner" ? "5 min" : "10 min";
+    final level = article.name.contains('Discrimination')
+        ? 'intermediate'
+        : 'beginner';
+    final time = level == 'beginner' ? '5 min' : '10 min';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
@@ -144,7 +144,7 @@ class _ArticleCard extends StatelessWidget {
                 ),
                 TagChip(
                   text: level,
-                  color: level == "beginner"
+                  color: level == 'beginner'
                       ? Colors.green.shade100
                       : Colors.yellow.shade200,
                 ),

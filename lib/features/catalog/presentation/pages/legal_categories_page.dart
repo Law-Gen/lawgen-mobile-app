@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/legal_document.dart';
-import '../../injection_container.dart';
+import '../../catalog_injection.dart';
 import '../bloc/legal_content_bloc.dart';
 
 // -- Konstanta Desain --
@@ -155,7 +155,7 @@ class _CategoryCard extends StatelessWidget {
                 onPressed: () {
                   // Navigasi ke halaman artikel, meneruskan ID dan nama
                   context.push(
-                    '/articles/${category.id}',
+                    '/topics/${category.id}',
                     extra: category.name,
                   );
                 },
