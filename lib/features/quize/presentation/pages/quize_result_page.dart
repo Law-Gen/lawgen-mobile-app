@@ -4,15 +4,17 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/question.dart';
 import '../../domain/entities/quize.dart';
 
-// Design System Colors
-const Color PRIMARY_COLOR = Color.fromARGB(92, 101, 67, 33); // deep brown (chocolate-like)
-const Color BACKGROUND_COLOR = Color(0xFFF0F4F8);
-const Color ACCENT_COLOR = Color(0xFF2EC4B6);
-const Color TEXT_COLOR_PRIMARY = Color(0xFF374151);
-const Color TEXT_COLOR_SECONDARY = Color(0xFF6B7280);
-const Color BORDER_COLOR = Color(0xFFE5E7EB);
-const Color CORRECT_COLOR = Color(0xFF2EC4B6); // Teal for correct
-const Color INCORRECT_COLOR = Color(0xFFEF4444); // Red for incorrect
+// -- Design Constants (New Palette) --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
+// Complementary colors for the new palette
+const Color kCorrectColor = Color(0xFF34D399); // A complementary green
+const Color kIncorrectColor = Color(0xFFF87171); // A complementary red
 
 class QuizResultPage extends StatelessWidget {
   final Quiz quiz;
@@ -26,6 +28,7 @@ class QuizResultPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // <-- 'context' is defined here
     int score = 0;
     userAnswers.forEach((questionId, answer) {
       if (quiz.questions.firstWhere((q) => q.id == questionId).correctOption ==
@@ -37,7 +40,7 @@ class QuizResultPage extends StatelessWidget {
     final double percentage = total > 0 ? (score / total) * 100 : 0;
 
     return Scaffold(
-      backgroundColor: BACKGROUND_COLOR,
+      backgroundColor: kBackgroundColor,
       appBar: _buildAppBar(context, quiz.name),
       body: Center(
         child: ConstrainedBox(
@@ -45,7 +48,8 @@ class QuizResultPage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              _buildScoreCard(percentage),
+              // MODIFICATION 1: Pass the context to the method
+              _buildScoreCard(context, percentage),
               const SizedBox(height: 24),
               ...quiz.questions.map((question) {
                 return _buildQuestionReviewCard(question);
@@ -58,15 +62,16 @@ class QuizResultPage extends StatelessWidget {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, String quizName) {
+    // ... (this method already correctly accepts context, no changes needed)
     return AppBar(
-      backgroundColor: BACKGROUND_COLOR,
+      backgroundColor: kBackgroundColor,
       elevation: 0,
       leading: TextButton.icon(
-        onPressed: () => context.go('/'), // Navigate to home or categories
-        icon: const Icon(Icons.arrow_back, color: TEXT_COLOR_SECONDARY),
+        onPressed: () => context.go('/quiz'), // This one is correct
+        icon: const Icon(Icons.arrow_back, color: kSecondaryTextColor),
         label: const Text(
           'Back to Quizzes',
-          style: TextStyle(fontFamily: 'Inter', color: TEXT_COLOR_SECONDARY),
+          style: TextStyle(fontFamily: 'Inter', color: kSecondaryTextColor),
         ),
       ),
       leadingWidth: 150,
@@ -76,7 +81,7 @@ class QuizResultPage extends StatelessWidget {
             'Quiz Results',
             style: TextStyle(
               fontFamily: 'Inter',
-              color: PRIMARY_COLOR,
+              color: kPrimaryTextColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -85,7 +90,7 @@ class QuizResultPage extends StatelessWidget {
             quizName,
             style: const TextStyle(
               fontFamily: 'Inter',
-              color: TEXT_COLOR_SECONDARY,
+              color: kSecondaryTextColor,
               fontSize: 14,
             ),
           ),
@@ -93,12 +98,11 @@ class QuizResultPage extends StatelessWidget {
       ),
       centerTitle: true,
       actions: [
-        // Placeholder for language switcher
         Container(
           margin: const EdgeInsets.only(right: 16),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            border: Border.all(color: BORDER_COLOR),
+            border: Border.all(color: kShadowColor),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
@@ -106,7 +110,7 @@ class QuizResultPage extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.bold,
-              color: PRIMARY_COLOR,
+              color: kPrimaryTextColor,
             ),
           ),
         ),
@@ -114,22 +118,31 @@ class QuizResultPage extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCard(double percentage) {
+  // MODIFICATION 2: Update the method to accept context
+  Widget _buildScoreCard(BuildContext context, double percentage) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kCardBackgroundColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: kShadowColor.withOpacity(0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
+          // ... (no changes to the Text and ProgressIndicator widgets)
           const Text(
             'Keep Learning!',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: PRIMARY_COLOR,
+              color: kPrimaryTextColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -138,7 +151,7 @@ class QuizResultPage extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
-              color: TEXT_COLOR_SECONDARY,
+              color: kSecondaryTextColor,
             ),
           ),
           const SizedBox(height: 20),
@@ -148,7 +161,7 @@ class QuizResultPage extends StatelessWidget {
               fontFamily: 'Inter',
               fontSize: 48,
               fontWeight: FontWeight.bold,
-              color: PRIMARY_COLOR,
+              color: kButtonColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -159,8 +172,8 @@ class QuizResultPage extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: percentage / 100,
                 minHeight: 10,
-                backgroundColor: BACKGROUND_COLOR,
-                valueColor: const AlwaysStoppedAnimation<Color>(PRIMARY_COLOR),
+                backgroundColor: kBackgroundColor,
+                valueColor: const AlwaysStoppedAnimation<Color>(kButtonColor),
               ),
             ),
           ),
@@ -169,27 +182,28 @@ class QuizResultPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               OutlinedButton(
-                onPressed: () {}, // Placeholder
+                onPressed: () {},
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 12,
                   ),
-                  side: const BorderSide(color: PRIMARY_COLOR, width: 1.5),
+                  side: const BorderSide(color: kButtonColor, width: 1.5),
                 ),
                 child: const Text(
                   'Review Quiz',
                   style: TextStyle(
-                    color: PRIMARY_COLOR,
+                    color: kButtonColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {}, // Placeholder
+                // Now this call is valid because 'context' is in scope
+                onPressed: () => context.go('/quiz'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: PRIMARY_COLOR,
+                  backgroundColor: kButtonColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -208,6 +222,7 @@ class QuizResultPage extends StatelessWidget {
     );
   }
 
+  // ... (no changes needed for _buildQuestionReviewCard or _buildAnswerOption)
   Widget _buildQuestionReviewCard(Question question) {
     final userAnswerKey = userAnswers[question.id];
     final bool isCorrect = userAnswerKey == question.correctOption;
@@ -216,8 +231,9 @@ class QuizResultPage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: kCardBackgroundColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kShadowColor.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +242,7 @@ class QuizResultPage extends StatelessWidget {
             children: [
               Icon(
                 isCorrect ? Icons.check_circle : Icons.cancel,
-                color: isCorrect ? CORRECT_COLOR : INCORRECT_COLOR,
+                color: isCorrect ? kCorrectColor : kIncorrectColor,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -236,7 +252,7 @@ class QuizResultPage extends StatelessWidget {
                     fontFamily: 'Inter',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: TEXT_COLOR_PRIMARY,
+                    color: kPrimaryTextColor,
                   ),
                 ),
               ),
@@ -256,7 +272,7 @@ class QuizResultPage extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: BACKGROUND_COLOR,
+              color: kBackgroundColor,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -264,7 +280,7 @@ class QuizResultPage extends StatelessWidget {
               "Explanation: ${'No explanation provided.'}",
               style: const TextStyle(
                 fontFamily: 'Inter',
-                color: TEXT_COLOR_SECONDARY,
+                color: kSecondaryTextColor,
                 fontSize: 14,
               ),
             ),
@@ -283,14 +299,14 @@ class QuizResultPage extends StatelessWidget {
     final optionText = option.value;
 
     Color backgroundColor = Colors.transparent;
-    Color textColor = TEXT_COLOR_SECONDARY;
+    Color textColor = kSecondaryTextColor;
 
     if (optionKey == correctOptionKey) {
-      backgroundColor = CORRECT_COLOR.withOpacity(0.1);
-      textColor = CORRECT_COLOR;
+      backgroundColor = kCorrectColor.withOpacity(0.1);
+      textColor = kCorrectColor;
     } else if (optionKey == userAnswerKey) {
-      backgroundColor = INCORRECT_COLOR.withOpacity(0.1);
-      textColor = INCORRECT_COLOR;
+      backgroundColor = kIncorrectColor.withOpacity(0.1);
+      textColor = kIncorrectColor;
     }
 
     return Container(

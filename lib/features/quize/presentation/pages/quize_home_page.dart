@@ -5,14 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../quiz_injection.dart';
 import '../bloc/quiz_bloc.dart';
 
-// Design System Colors
-const Color PRIMARY_COLOR = Color.fromARGB(92, 55, 33, 20); // deeper brown
-const Color BACKGROUND_COLOR = Color(0xFFF0F4F8); // Background (Calm Off-White)
-const Color ACCENT_COLOR = Color(0xFF2EC4B6); // Accent (Actionable Teal)
-const Color TEXT_COLOR_PRIMARY = Color(0xFF374151); // For main text
-const Color TEXT_COLOR_SECONDARY = Color(
-  0xFF6B7280,
-); // For subtitles and details
+// -- Design Constants (New Palette) --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
 
 class QuizHomePage extends StatefulWidget {
   const QuizHomePage({super.key});
@@ -34,9 +33,9 @@ class _QuizHomePageState extends State<QuizHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       // Use the specified background color.
-      backgroundColor: BACKGROUND_COLOR,
+      backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        backgroundColor: BACKGROUND_COLOR,
+        backgroundColor: kBackgroundColor,
         elevation: 0,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +46,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                 fontFamily: 'Noto Sans Ethiopic',
                 fontSize: 26, // Larger header font size
                 fontWeight: FontWeight.bold,
-                color: PRIMARY_COLOR,
+                color: kPrimaryTextColor,
               ),
             ),
             SizedBox(height: 4),
@@ -57,7 +56,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                 fontFamily: 'Inter',
                 fontSize: 17, // Base body font size
                 fontWeight: FontWeight.normal,
-                color: PRIMARY_COLOR,
+                color: kPrimaryTextColor,
               ),
             ),
           ],
@@ -69,7 +68,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
         builder: (context, state) {
           if (state is QuizCategoriesLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: PRIMARY_COLOR),
+              child: CircularProgressIndicator(color: kButtonColor),
             );
           }
           if (state is QuizError) {
@@ -99,7 +98,9 @@ class _QuizHomePageState extends State<QuizHomePage> {
                               fontFamily: 'Inter',
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : PRIMARY_COLOR,
+                              color: isSelected
+                                  ? Colors.white
+                                  : kPrimaryTextColor,
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
@@ -113,16 +114,16 @@ class _QuizHomePageState extends State<QuizHomePage> {
                                 ),
                               );
                             },
-                            // Use Accent color for selected chip
-                            selectedColor: ACCENT_COLOR,
-                            backgroundColor: Colors.white,
+                            // Use Button color for selected chip
+                            selectedColor: kButtonColor,
+                            backgroundColor: kCardBackgroundColor,
                             elevation: isSelected ? 4.0 : 1.0,
                             pressElevation: 6.0,
                             shape: StadiumBorder(
                               side: BorderSide(
                                 color: isSelected
                                     ? Colors.transparent
-                                    : PRIMARY_COLOR.withOpacity(0.3),
+                                    : kShadowColor,
                                 width: 1.5,
                               ),
                             ),
@@ -149,7 +150,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
   Widget _buildQuizList(QuizCategoriesLoaded state) {
     if (state.isQuizzesLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: PRIMARY_COLOR),
+        child: CircularProgressIndicator(color: kButtonColor),
       );
     }
 
@@ -160,7 +161,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 17,
-            color: TEXT_COLOR_SECONDARY,
+            color: kSecondaryTextColor,
           ),
         ),
       );
@@ -172,8 +173,8 @@ class _QuizHomePageState extends State<QuizHomePage> {
       itemBuilder: (context, index) {
         final quiz = state.quizzes[index];
         return Card(
-          color: Colors.white,
-          shadowColor: PRIMARY_COLOR.withOpacity(0.1),
+          color: kCardBackgroundColor,
+          shadowColor: kShadowColor,
           margin: const EdgeInsets.only(bottom: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -187,12 +188,12 @@ class _QuizHomePageState extends State<QuizHomePage> {
               Container(
                 height: 120,
                 width: double.infinity,
-                color: PRIMARY_COLOR.withOpacity(0.05),
+                color: kButtonColor.withOpacity(0.05),
                 child: const Center(
                   child: Icon(
                     Icons.school_outlined,
                     size: 50,
-                    color: PRIMARY_COLOR,
+                    color: kButtonColor,
                   ),
                 ),
               ),
@@ -210,7 +211,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                         fontFamily: 'Inter',
                         fontSize: 22, // Larger font size for title
                         fontWeight: FontWeight.bold,
-                        color: TEXT_COLOR_PRIMARY,
+                        color: kPrimaryTextColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -221,7 +222,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                         const Icon(
                           Icons.help_outline,
                           size: 18,
-                          color: TEXT_COLOR_SECONDARY,
+                          color: kSecondaryTextColor,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -229,14 +230,14 @@ class _QuizHomePageState extends State<QuizHomePage> {
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
-                            color: TEXT_COLOR_SECONDARY,
+                            color: kSecondaryTextColor,
                           ),
                         ),
                         const SizedBox(width: 24),
                         const Icon(
                           Icons.timer_outlined,
                           size: 18,
-                          color: TEXT_COLOR_SECONDARY,
+                          color: kSecondaryTextColor,
                         ),
                         const SizedBox(width: 6),
                         const Text(
@@ -244,7 +245,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
-                            color: TEXT_COLOR_SECONDARY,
+                            color: kSecondaryTextColor,
                           ),
                         ),
                       ],
@@ -255,8 +256,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                       alignment: Alignment.center,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          // Use Primary color for key actions
-                          backgroundColor: PRIMARY_COLOR,
+                          backgroundColor: kButtonColor,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 40,
                             vertical: 14,
@@ -267,7 +267,6 @@ class _QuizHomePageState extends State<QuizHomePage> {
                           elevation: 3,
                         ),
                         onPressed: () {
-                          // Uncomment the line below to enable navigation
                           context.push('/quiz/${quiz.id}');
                           print('Navigating to quiz with ID: ${quiz.id}');
                         },
