@@ -40,23 +40,27 @@ class _QuizHomePageState extends State<QuizHomePage> {
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'የህግ ጥያቄዎች', // "Legal Questions" in Amharic
-              style: TextStyle(
-                fontFamily: 'Noto Sans Ethiopic',
-                fontSize: 26, // Larger header font size
-                fontWeight: FontWeight.bold,
-                color: kPrimaryTextColor,
+            Center(
+              child: Text(
+                'የህግ ጥያቄዎች', // "Legal Questions" in Amharic
+                style: TextStyle(
+                  fontFamily: 'Noto Sans Ethiopic',
+                  fontSize: 26, // Larger header font size
+                  fontWeight: FontWeight.bold,
+                  color: kPrimaryTextColor,
+                ),
               ),
             ),
             SizedBox(height: 4),
-            Text(
-              'Test Your Knowledge',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 17, // Base body font size
-                fontWeight: FontWeight.normal,
-                color: kPrimaryTextColor,
+            Center(
+              child: Text(
+                'Test Your Knowledge',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17, // Base body font size
+                  fontWeight: FontWeight.normal,
+                  color: kPrimaryTextColor,
+                ),
               ),
             ),
           ],
