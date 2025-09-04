@@ -7,13 +7,17 @@ import '../../domain/entities/quize.dart';
 import '../../quiz_injection.dart';
 import '../bloc/quiz_bloc.dart';
 
-// Design System Colors
-const Color PRIMARY_COLOR = Color.fromARGB(92, 101, 67, 33);
-const Color BACKGROUND_COLOR = Color(0xFFF0F4F8);
-const Color ACCENT_COLOR = Color(0xFF2EC4B6);
-const Color TEXT_COLOR_PRIMARY = Color(0xFF374151);
-const Color TEXT_COLOR_SECONDARY = Color(0xFF6B7280);
-const Color BORDER_COLOR = Color(0xFFE5E7EB); // A light gray for borders
+// -- Design Constants (New Palette) --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
+// Derived constants for consistency
+const Color kAccentColor = kButtonColor; // Use the button color for highlights
+const Color kBorderColor = kShadowColor; // Use the shadow color for borders
 
 class QuizQuestionPage extends StatefulWidget {
   final String quizId;
@@ -52,13 +56,13 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: BACKGROUND_COLOR,
+      backgroundColor: kBackgroundColor,
       appBar: _buildAppBar(),
       body: BlocBuilder<QuizBloc, QuizState>(
         builder: (context, state) {
           if (state is QuizeQuestionLoading) {
             return const Center(
-              child: CircularProgressIndicator(color: PRIMARY_COLOR),
+              child: CircularProgressIndicator(color: kButtonColor),
             );
           }
           if (state is QuizError) {
@@ -79,14 +83,14 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: BACKGROUND_COLOR,
+      backgroundColor: kBackgroundColor,
       elevation: 0,
       leading: TextButton.icon(
         onPressed: () => context.pop(),
-        icon: const Icon(Icons.arrow_back, color: TEXT_COLOR_SECONDARY),
+        icon: const Icon(Icons.arrow_back, color: kSecondaryTextColor),
         label: const Text(
           "Exit Quiz",
-          style: TextStyle(fontFamily: 'Inter', color: TEXT_COLOR_SECONDARY),
+          style: TextStyle(fontFamily: 'Inter', color: kSecondaryTextColor),
         ),
       ),
       leadingWidth: 120, // Give more space for the label
@@ -99,7 +103,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                 quizName,
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  color: PRIMARY_COLOR,
+                  color: kPrimaryTextColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -108,7 +112,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                 "Question ${_currentIndex + 1} of ...", // Placeholder, updated in body
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  color: TEXT_COLOR_SECONDARY,
+                  color: kSecondaryTextColor,
                   fontSize: 14,
                 ),
               ),
@@ -123,7 +127,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           margin: const EdgeInsets.only(right: 16),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            border: Border.all(color: BORDER_COLOR),
+            border: Border.all(color: kBorderColor),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
@@ -131,7 +135,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             style: TextStyle(
               fontFamily: 'Inter',
               fontWeight: FontWeight.bold,
-              color: PRIMARY_COLOR,
+              color: kPrimaryTextColor,
             ),
           ),
         ),
@@ -153,11 +157,11 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           margin: const EdgeInsets.all(24),
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: kCardBackgroundColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: PRIMARY_COLOR.withOpacity(0.05),
+                color: kShadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -189,7 +193,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               "Progress",
               style: TextStyle(
                 fontFamily: 'Inter',
-                color: TEXT_COLOR_PRIMARY,
+                color: kPrimaryTextColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -197,7 +201,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               "${(progress * 100).toInt()}%",
               style: const TextStyle(
                 fontFamily: 'Inter',
-                color: TEXT_COLOR_PRIMARY,
+                color: kPrimaryTextColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -209,8 +213,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 8,
-            backgroundColor: BACKGROUND_COLOR,
-            valueColor: const AlwaysStoppedAnimation<Color>(PRIMARY_COLOR),
+            backgroundColor: kBackgroundColor,
+            valueColor: const AlwaysStoppedAnimation<Color>(kButtonColor),
           ),
         ),
       ],
@@ -224,7 +228,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
         fontFamily: 'Inter',
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: PRIMARY_COLOR,
+        color: kPrimaryTextColor,
       ),
     );
   }
@@ -241,10 +245,10 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isSelected ? ACCENT_COLOR.withOpacity(0.1) : null,
+              color: isSelected ? kAccentColor.withOpacity(0.1) : null,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? ACCENT_COLOR : BORDER_COLOR,
+                color: isSelected ? kAccentColor : kBorderColor,
                 width: 1.5,
               ),
             ),
@@ -254,7 +258,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                   isSelected
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked_outlined,
-                  color: isSelected ? ACCENT_COLOR : TEXT_COLOR_SECONDARY,
+                  color: isSelected ? kAccentColor : kSecondaryTextColor,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -264,7 +268,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
                       fontFamily: 'Inter',
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: TEXT_COLOR_PRIMARY,
+                      color: kPrimaryTextColor,
                     ),
                   ),
                 ),
@@ -292,7 +296,7 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
               fontFamily: 'Inter',
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: TEXT_COLOR_SECONDARY,
+              color: kSecondaryTextColor,
             ),
           ),
         ),
@@ -305,8 +309,8 @@ class _QuizQuestionPageState extends State<QuizQuestionPage> {
             }
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: PRIMARY_COLOR,
-            foregroundColor: Colors.white,
+            backgroundColor: kButtonColor,
+            foregroundColor: Colors.white, // White text on the dark button
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

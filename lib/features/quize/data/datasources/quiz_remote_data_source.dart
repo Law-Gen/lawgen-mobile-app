@@ -1,6 +1,7 @@
 // import 'dart:convert';
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // ✅ CHANGED
 // import 'package:http/http.dart' as http;
-// import 'package:shared_preferences/shared_preferences.dart';
+// // import 'package:shared_preferences/shared_preferences.dart'; // ❌ REMOVED
 
 // import '../../../../core/errors/exception.dart';
 // import '../models/question_model.dart';
@@ -21,19 +22,23 @@
 //   Future<List<QuestionModel>> getQuestionsByQuizId(String quizId);
 // }
 
-// // ✅ API endpoints
+// // ✅ API endpoints and Key
 // const String _baseUrl = 'https://your-api.com/api/v1';
-// const String CACHED_AUTH_TOKEN = 'CACHED_AUTH_TOKEN';
+// const String SECURE_AUTH_TOKEN_KEY = 'SECURE_AUTH_TOKEN_KEY'; // Renamed for clarity
 
 // class QuizRemoteDataSourceImpl implements QuizRemoteDataSource {
 //   final http.Client client;
+//   final FlutterSecureStorage storage; // ✅ CHANGED: Added as a dependency
 
-//   QuizRemoteDataSourceImpl({required this.client});
+//   QuizRemoteDataSourceImpl({
+//     required this.client,
+//     required this.storage, // ✅ CHANGED: Required in constructor
+//   });
 
-//   // ✅ Get headers with token if available
+//   // ✅ Get headers with token from secure storage
 //   Future<Map<String, String>> get _headers async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final token = prefs.getString(CACHED_AUTH_TOKEN);
+//     // ✅ CHANGED: Logic now uses flutter_secure_storage
+//     final token = await storage.read(key: SECURE_AUTH_TOKEN_KEY);
 
 //     final headers = {'Content-Type': 'application/json'};
 //     if (token != null && token.isNotEmpty) {
@@ -42,7 +47,7 @@
 //     return headers;
 //   }
 
-//   // ✅ Unified GET handler
+//   // ✅ Unified GET handler (No changes needed here)
 //   Future<http.Response> _getRequest(Uri url) async {
 //     final response = await client.get(url, headers: await _headers);
 //     if (response.statusCode == 200) {
@@ -51,6 +56,10 @@
 //       throw ServerException();
 //     }
 //   }
+
+//   //
+//   // No changes are needed in the methods below as they all rely on _getRequest
+//   //
 
 //   @override
 //   Future<List<QuizCategoryModel>> getQuizCategories({
@@ -89,7 +98,7 @@
 //     final response = await _getRequest(url);
 
 //     final decoded = json.decode(response.body) as Map<String, dynamic>;
-//     final quizJson = decoded; // API returns quiz with questions included
+//     final quizJson = decoded;
 
 //     return QuizModel.fromJson(quizJson);
 //   }
