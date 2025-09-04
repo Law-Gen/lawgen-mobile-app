@@ -1,61 +1,44 @@
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import '../../data/models/profile_model.dart';
-// import '../../domain/entities/profile.dart';
-// import '../../domain/usecases/getprofile_usecase.dart';
-// import '../../domain/usecases/update_profile_usecase.dart';
-// import '../../domain/usecases/change_password_usecase.dart';
-// import '../../domain/usecases/logout_usecase.dart';
-// import '../../presentation/bloc/profile_event.dart';
-// import '../../presentation/bloc/profile_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-// class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
-//   final GetProfile getProfile;
-//   final UpdateProfile updateProfile;
-//   final ChangePassword changePassword;
-//   final Logout logout;
+import '../../domain/usecases/edit_profile_usecase.dart';
+import '../../domain/usecases/get_profile_usecases.dart';
+import 'profile_event.dart';
+import 'profile_state.dart';
 
-//   ProfileBloc({
-//     required this.getProfile,
-//     required this.updateProfile,
-//     required this.changePassword,
-//     required this.logout,
-//   }) : super(ProfileInitial()) {
-//     on<LoadProfileEvent>((event, emit) async {
-//       emit(ProfileLoading());
-//       final result = await getProfile();
-//       result.fold(
-//         (failure) => emit(ProfileError("Failed to load profile")),
-//         (profile) => emit(ProfileLoaded(profile)),
-//       );
-//     });
+class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
+  final GetProfileUseCase getProfile;
+  final UpdateProfileUseCase updateProfile;
 
-//     on<UpdateProfileEvent>((event, emit) async {
-//       emit(ProfileLoading());
-//       final result = await updateProfile.call(profile:event.profile);
-//       result.fold(
-//         (failure) => emit(ProfileError("Failed to update profile")),
-//         (profile) => emit(ProfileLoaded(profile)),
-//       );
-//     });
+  ProfileBloc({required this.getProfile, required this.updateProfile})
+    : super(ProfileInitial()) {
+    on<LoadProfile>(_onLoadProfile);
+    on<SaveProfile>(_onSaveProfile);
+  }
 
-//     on<ChangePasswordEvent>((event, emit) async {
-//       emit(ProfileLoading());
-//       final result = await changePassword(
-//         oldPass: event.oldPassword,
-//         newPass: event.newPassword,
-//       );
-//       result.fold(
-//         (failure) => emit(ProfileError("Failed to change password")),
-//         (_) => emit(ProfilePasswordChanged()),
-//       );
-//     });
+  Future<void> _onLoadProfile(
+    LoadProfile event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(ProfileLoading());
+    try {
 
-//     on<LogoutEvent>((event, emit) async {
-//       final result = await logout();
-//       result.fold(
-//         (failure) => emit(ProfileError("Failed to logout")),
-//         (_) => emit(ProfileLoggedOut()),
-//       );
-//     });
-//   }
-// }
+      final profile = await getProfile();
+      emit(ProfileLoaded(profile));
+    } catch (e) {
+      emit(ProfileError("Failed to load profile: $e"));
+    }
+  }
+
+  Future<void> _onSaveProfile(
+    SaveProfile event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(ProfileLoading());
+    try {
+      final updated = await updateProfile(event.profile);
+      emit(ProfileLoaded(updated));
+    } catch (e) {
+      emit(ProfileError("Failed to update profile: $e"));
+    }
+  }
+}

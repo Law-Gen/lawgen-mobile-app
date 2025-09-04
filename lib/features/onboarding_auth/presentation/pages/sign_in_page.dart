@@ -30,7 +30,7 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
-  void _navigateToSignUp() {
+  void _navigateToSignIn() {
     context.go('/signup');
   }
 
@@ -216,7 +216,7 @@ class _SignInPageState extends State<SignInPage> {
                     children: [
                       const Text("Don't have an account? "),
                       TextButton(
-                        onPressed: _navigateToSignUp,
+                        onPressed: _navigateToSignIn,
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(color: Colors.blueAccent),

@@ -3,24 +3,37 @@ class Profile {
   final String firstName;
   final String lastName;
   final String email;
-  final String birthDate;
   final String gender;
-
+  final String birthDate;
   final String? profilePictureUrl;
-  final String? subscriptionStatus;
-  final String? role;
-  final String? languagePreference;
 
   Profile({
     required this.id,
     required this.firstName,
     required this.lastName,
     required this.email,
-    required this.birthDate,
     required this.gender,
+    required this.birthDate,
     this.profilePictureUrl,
-    this.subscriptionStatus,
-    this.role,
-    this.languagePreference,
   });
+
+  factory Profile.fromJson(Map<String, dynamic> json) => Profile(
+        id: json['id'],
+        firstName: json['firstName'],
+        lastName: json['lastName'],
+        email: json['email'],
+        gender: json['gender'],
+        birthDate: json['birthDate'],
+        profilePictureUrl: json['profilePictureUrl'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "firstName": firstName,
+        "lastName": lastName,
+        "email": email,
+        "gender": gender,
+        "birthDate": birthDate,
+        "profilePictureUrl": profilePictureUrl,
+      };
 }

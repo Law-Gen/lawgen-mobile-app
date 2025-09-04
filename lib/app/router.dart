@@ -8,8 +8,8 @@ import '../features/onboarding_auth/presentation/pages/reset_password_page.dart'
 import '../features/onboarding_auth/presentation/pages/sign_in_page.dart';
 import '../features/onboarding_auth/presentation/pages/sign_up_page.dart';
 import '../features/onboarding_auth/presentation/pages/success_page.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 
 // --- Placeholder Screens ---
 // In your actual app, you would import your real screen widgets here.
@@ -95,9 +95,9 @@ class MainAppShell extends StatelessWidget {
 class AppRouter {
   // Mock authentication state. In a real app, you would get this from your auth provider/state manager.
   final ValueNotifier<bool> isAuthenticated = ValueNotifier(false);
- // Change to `true` to test logged-in routes
+  // Change to `true` to test logged-in routes
   final ValueNotifier<bool> hasSeenOnboarding = ValueNotifier(false);
-   AppRouter() {
+  AppRouter() {
     _loadOnboardingStatus();
   }
 
@@ -111,7 +111,7 @@ class AppRouter {
     await prefs.setBool('hasSeenOnboarding', true);
     hasSeenOnboarding.value = true;
   }
- // Change to `true` to skip onboarding
+  // Change to `true` to skip onboarding
 
   late final GoRouter router = GoRouter(
     initialLocation: '/onboarding',
@@ -202,8 +202,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) =>
-                const PlaceholderScreen(title: 'Profile'),
+            builder: (context, state) => const ProfilePage(),
           ),
         ],
       ),
