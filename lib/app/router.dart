@@ -11,6 +11,10 @@ import '../features/onboarding_auth/presentation/pages/success_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
+
+
+import '../features/catalog/presentation/pages/legal_articles_page.dart';
+import '../features/catalog/presentation/pages/legal_categories_page.dart';
 import '../features/quize/domain/entities/quize.dart';
 import '../features/quize/presentation/pages/question_page.dart';
 import '../features/quize/presentation/pages/quize_home_page.dart';
@@ -171,15 +175,20 @@ class AppRouter {
           ),
           GoRoute(
             path: '/topics',
-            builder: (context, state) =>
-                const PlaceholderScreen(title: 'Legal Topics'),
+            builder: (context, state) => LegalCategoriesPage.withBloc(),
             routes: [
               // Nested route for topic details
               GoRoute(
-                path: ':topicId', // e.g., /topics/family-law
-                builder: (context, state) => PlaceholderScreen(
-                  title: 'Topic Detail: ${state.pathParameters['topicId']}',
-                ),
+                path: ':topicId',
+                builder: (context, state) {
+                  final categoryId = state.pathParameters['topicId']!;
+                  final categoryName = state.extra as String;
+
+                  return LegalArticlesPage.withBloc(
+                    categoryId: categoryId,
+                    categoryName: categoryName,
+                  );
+                },
               ),
             ],
           ),
