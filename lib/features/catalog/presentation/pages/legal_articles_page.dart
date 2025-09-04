@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../domain/entities/legal_document.dart';
-import '../../catalog_injection.dart';
-import '../bloc/legal_content_bloc.dart';
-import 'legal_categories_page.dart';
 
-class LegalArticlesPage extends StatelessWidget {
+import '../../domain/entities/legal_document.dart';
+import '../../catalog_injection.dart'; // Make sure this path is correct
+import '../bloc/legal_content_bloc.dart';
+import 'legal_categories_page.dart'; // For color constants and the TagChip widget
+
+// MODIFIED: Converted to a StatefulWidget
+class LegalArticlesPage extends StatefulWidget {
   final String categoryId;
   final String categoryName;
 
@@ -17,7 +19,6 @@ class LegalArticlesPage extends StatelessWidget {
     required this.categoryName,
   });
 
-  /// Metode factory untuk menyediakan BLoC dan mengirimkan event pemuatan awal
   static Widget withBloc({
     required String categoryId,
     required String categoryName,
@@ -34,6 +35,33 @@ class LegalArticlesPage extends StatelessWidget {
   }
 
   @override
+  State<LegalArticlesPage> createState() => _LegalArticlesPageState();
+}
+
+class _LegalArticlesPageState extends State<LegalArticlesPage> {
+  // NEW: Controller and state for the search query
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // NEW: Listener to update the UI as the user types
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // NEW: Dispose the controller to prevent memory leaks
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
@@ -44,7 +72,7 @@ class LegalArticlesPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              categoryName,
+              widget.categoryName, // Access properties via 'widget.'
               style: const TextStyle(
                 color: kPrimaryTextColor,
                 fontWeight: FontWeight.bold,
@@ -61,42 +89,104 @@ class LegalArticlesPage extends StatelessWidget {
           onPressed: () => context.pop(),
         ),
       ),
-      body: BlocBuilder<LegalContentBloc, LegalContentState>(
-        builder: (context, state) {
-          if (state is LegalContentLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: kButtonColor),
-            );
-          }
-          if (state is LegalContentError) {
-            return Center(
-              child: Text(
-                state.message,
-                style: const TextStyle(color: kSecondaryTextColor),
-              ),
-            );
-          }
-          if (state is LegalArticlesLoaded) {
-            return ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: state.articles.length,
-              itemBuilder: (context, index) {
-                return _ArticleCard(article: state.articles[index]);
-              },
-            );
-          }
-          return const Center(
-            child: Text(
-              'Loading articles...',
-              style: TextStyle(color: kSecondaryTextColor),
+      // MODIFIED: Wrapped body in a Column to add the search bar
+      body: Column(
+        children: [
+          // NEW: Search Bar UI
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
             ),
-          );
-        },
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search articles...',
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: kSecondaryTextColor,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: kShadowColor.withOpacity(0.5)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: kShadowColor.withOpacity(0.5)),
+                ),
+              ),
+            ),
+          ),
+          // MODIFIED: Expanded the BlocBuilder to fill remaining space
+          Expanded(
+            child: BlocBuilder<LegalContentBloc, LegalContentState>(
+              builder: (context, state) {
+                if (state is LegalContentLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: kButtonColor),
+                  );
+                }
+                if (state is LegalContentError) {
+                  return Center(
+                    child: Text(
+                      state.message,
+                      style: const TextStyle(color: kSecondaryTextColor),
+                    ),
+                  );
+                }
+                if (state is LegalArticlesLoaded) {
+                  // NEW: Filtering Logic
+                  final allArticles = state.articles;
+                  final filteredArticles = allArticles.where((article) {
+                    final titleLower = article.name.toLowerCase();
+                    final descriptionLower = article.description.toLowerCase();
+                    final searchLower = _searchQuery.toLowerCase();
+
+                    return titleLower.contains(searchLower) ||
+                        descriptionLower.contains(searchLower);
+                  }).toList();
+
+                  // NEW: Handle "No Results" case
+                  if (filteredArticles.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No articles found.',
+                        style: TextStyle(
+                          color: kSecondaryTextColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    // Use the filtered list
+                    itemCount: filteredArticles.length,
+                    itemBuilder: (context, index) {
+                      return _ArticleCard(article: filteredArticles[index]);
+                    },
+                  );
+                }
+                return const Center(
+                  child: Text(
+                    'Loading articles...',
+                    style: TextStyle(color: kSecondaryTextColor),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
+// _ArticleCard remains exactly the same.
 class _ArticleCard extends StatelessWidget {
   final LegalDocument article;
   const _ArticleCard({required this.article});
