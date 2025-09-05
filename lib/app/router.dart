@@ -19,6 +19,8 @@ import '../features/quize/presentation/pages/question_page.dart';
 import '../features/quize/presentation/pages/quize_home_page.dart';
 import '../features/quize/presentation/pages/quize_result_page.dart';
 
+import '../features/chat/presentation/pages/chat_page.dart';
+
 // --- Placeholder Screens ---
 // In your actual app, you would import your real screen widgets here.
 // These are placeholders to make the router code runnable.
@@ -56,13 +58,21 @@ class MainAppShell extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Color.fromARGB(233, 238, 236, 231),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Color.fromARGB(255, 155, 113, 87),
+        elevation: 20,
+        unselectedItemColor: Color.fromARGB(121, 176, 149, 133),
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.category),
-            label: 'Categories',
+            icon: Icon(Icons.bubble_chart_outlined),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.my_library_books_outlined),
+            label: 'Catalog',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizzes'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
@@ -156,8 +166,8 @@ class AppRouter {
       // --- Guest/Anonymous Routes ---
       GoRoute(
         path: '/',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Chat (Guest Mode)'),
+        // how can i tell the chatpage that the user is not logged in yet 
+        builder: (context, state) => ChatPage(),
       ),
 
       // --- Logged-In User Routes with Bottom Navigation Shell ---
@@ -166,11 +176,7 @@ class AppRouter {
           return MainAppShell(child: child);
         },
         routes: [
-          GoRoute(
-            path: '/chat',
-            builder: (context, state) =>
-                const PlaceholderScreen(title: 'Chat (Logged-In)'),
-          ),
+          GoRoute(path: '/chat', builder: (context, state) => ChatPage()),
           GoRoute(
             path: '/topics',
             builder: (context, state) => LegalCategoriesPage.withBloc(),
@@ -278,12 +284,13 @@ class AppRouter {
     //     return isAuthenticated.value ? '/chat' : '/';
     //   }
 
-    //   // If the user is not authenticated and is trying to access a protected route,
-    //   // redirect them to the sign-in page.
-    //   final isProtected =
-    //       state.uri.toString().startsWith('/chat') ||
-    //       state.uri.toString().startsWith('/profile') ||
-    //       state.uri.toString().startsWith('/admin');
+      // If the user is not authenticated and is trying to access a protected route,
+      // redirect them to the sign-in page.
+      final isProtected =
+          state.uri.toString().startsWith('/chat') ||
+          state.uri.toString().startsWith('/profile') ||
+          state.uri.toString().startsWith('/admin');
+   
 
     //   // if (!isAuthenticated && isProtected) {
     //   //   return '/signin';

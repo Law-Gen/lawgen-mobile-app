@@ -201,4 +201,5 @@ We use the standard Dart and Flutter linters to enforce a consistent code style.
     ```bash
     flutter analyze
     ```
+
 Happy coding! 🚀

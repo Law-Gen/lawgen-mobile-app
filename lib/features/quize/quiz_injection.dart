@@ -1,6 +1,5 @@
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
-import 'package:internet_connection_checker/internet_connection_checker.dart';
 
 import '../../core/network/network_info.dart';
 import 'data/datasources/quiz_remote_data_source.dart';
@@ -16,25 +15,38 @@ final quizSl = GetIt.instance;
 
 Future<void> initQuiz() async {
   //! Bloc
-  quizSl.registerFactory(
-    () => QuizBloc(
-      getQuizCategories: quizSl(),
-      getQuizzesByCategory: quizSl(),
-      getQuizById: quizSl(),
-      getQuestionsByQuizId: quizSl(),
-    ),
-  );
+  if (!quizSl.isRegistered<QuizBloc>()) {
+    quizSl.registerFactory(
+      () => QuizBloc(
+        getQuizCategories: quizSl(),
+        getQuizzesByCategory: quizSl(),
+        getQuizById: quizSl(),
+        getQuestionsByQuizId: quizSl(),
+      ),
+    );
+  }
 
   //! Use cases
-  quizSl.registerLazySingleton(() => GetQuizCategoriesUsecase(quizSl()));
-  quizSl.registerLazySingleton(() => GetQuizzesByCategoryUsecase(quizSl()));
-  quizSl.registerLazySingleton(() => GetQuizByIdUsecase(quizSl()));
-  quizSl.registerLazySingleton(() => GetQuestionsByQuizIdUsecase(quizSl()));
+  if (!quizSl.isRegistered<GetQuizCategoriesUsecase>()) {
+    quizSl.registerLazySingleton(() => GetQuizCategoriesUsecase(quizSl()));
+  }
+  if (!quizSl.isRegistered<GetQuizzesByCategoryUsecase>()) {
+    quizSl.registerLazySingleton(() => GetQuizzesByCategoryUsecase(quizSl()));
+  }
+  if (!quizSl.isRegistered<GetQuizByIdUsecase>()) {
+    quizSl.registerLazySingleton(() => GetQuizByIdUsecase(quizSl()));
+  }
+  if (!quizSl.isRegistered<GetQuestionsByQuizIdUsecase>()) {
+    quizSl.registerLazySingleton(() => GetQuestionsByQuizIdUsecase(quizSl()));
+  }
 
   //! Repository
-  quizSl.registerLazySingleton<QuizRepository>(
-    () => QuizRepositoryImpl(remoteDataSource: quizSl(), networkInfo: quizSl()),
-  );
+  if (!quizSl.isRegistered<QuizRepository>()) {
+    quizSl.registerLazySingleton<QuizRepository>(
+      () =>
+          QuizRepositoryImpl(remoteDataSource: quizSl(), networkInfo: quizSl()),
+    );
+  }
 
   //! Data sources
 
