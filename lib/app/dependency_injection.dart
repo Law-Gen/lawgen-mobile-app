@@ -1,20 +1,30 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:lawgen/features/onboarding_auth/data/datasources/auth_local_datasource.dart';
-import 'package:lawgen/features/onboarding_auth/data/datasources/auth_remote_datasource.dart';
-import 'package:lawgen/features/onboarding_auth/data/repositories/auth_repository_impl.dart';
-import 'package:lawgen/features/onboarding_auth/domain/repositories/auth_repository.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/signin_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/signup_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/forget_password_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/getme_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/logout_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/reset_password_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/verify_password_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/verifyotp_usecase.dart';
-import 'package:lawgen/features/onboarding_auth/domain/usecases/auth_check.dart';
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+import '../features/onboarding_auth/data/datasources/auth_local_datasource.dart';
+import '../features/onboarding_auth/data/datasources/auth_remote_datasource.dart';
+import '../features/onboarding_auth/data/repositories/auth_repository_impl.dart';
+import '../features/onboarding_auth/domain/repositories/auth_repository.dart';
+import '../features/onboarding_auth/domain/usecases/signin_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/signup_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/forget_password_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/getme_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/logout_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/reset_password_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/verify_password_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/verifyotp_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/auth_check.dart';
+import '../features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+import '../features/profile/data/datasources/profile_remote_datasource.dart';
+import '../features/profile/data/repositories/profile_repositoryimpl.dart';
+import '../features/profile/domain/repositories/profile_repository.dart';
+import '../features/profile/domain/usecases/edit_profile_usecase.dart';
+import '../features/profile/domain/usecases/get_profile_usecases.dart';
+import '../features/profile/presentation/bloc/profile_bloc.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/profile/presentation/bloc/profile_event.dart';
+import '../features/profile/presentation/bloc/profile_state.dart';
 
 final sl = GetIt.instance;
 
@@ -34,6 +44,14 @@ Future<void> init() async {
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(remoteDatasource: sl(), localDatasource: sl()),
   );
+  sl.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(client: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(remoteDataSource: sl()),
+  );
 
   // Use Cases
   sl.registerLazySingleton(() => ForgetPasswordUseCase(sl()));
@@ -46,6 +64,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => VerifyPasswordUseCase(sl()));
   sl.registerLazySingleton(() => VerifyOTPUseCase(sl()));
   sl.registerLazySingleton(() => CheckAuthStatusUseCase(sl()));
+  sl.registerLazySingleton(() => GetProfileUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
 
   sl.registerFactory(
     () => AuthBloc(
@@ -60,4 +80,8 @@ Future<void> init() async {
       getMeUseCase: sl(),
     ),
   );
+  sl.registerFactory(() => ProfileBloc(
+    getProfile: sl(),
+    updateProfile: sl(),
+  ));
 }
