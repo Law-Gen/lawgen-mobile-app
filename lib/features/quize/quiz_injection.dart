@@ -37,6 +37,20 @@ Future<void> initQuiz() async {
   );
 
   //! Data sources
+  
+  // THE REAL ONE
+  // // Register FlutterSecureStorage as a lazy singleton
+  // quizSl.registerLazySingleton(() => const FlutterSecureStorage());
+
+  // // ...
+
+  // // Update the registration for your QuizRemoteDataSource
+  // quizSl.registerLazySingleton<QuizRemoteDataSource>(
+  //   () => QuizRemoteDataSourceImpl(
+  //     client: quizSl(),
+  //     storage: quizSl(), // Pass the registered FlutterSecureStorage instance
+  //   ),
+  // );
   quizSl.registerLazySingleton<QuizRemoteDataSource>(
     () => QuizRemoteDataSourceImpl(),
   );
