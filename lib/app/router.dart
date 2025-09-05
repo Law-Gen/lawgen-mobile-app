@@ -132,7 +132,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/otppage',
-        builder: (context, state) => const OtpPage(email: 'email'),
+        builder: (context, state) {
+          final email = state.extra as String?;
+          return OtpPage(email: email ?? 'Error: No email provided');
+        },
       ),
       GoRoute(
         path: '/successreset',
@@ -146,11 +149,7 @@ class AppRouter {
       ),
 
       // --- Guest/Anonymous Routes ---
-      GoRoute(
-        path: '/',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Chat (Guest Mode)'),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const Placeholder()),
 
       // --- Logged-In User Routes with Bottom Navigation Shell ---
       ShellRoute(

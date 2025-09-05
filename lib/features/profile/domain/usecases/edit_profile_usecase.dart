@@ -1,22 +1,14 @@
-// import '../entities/profile.dart';
-// import '../repositories/profile_repository.dart';
+import 'dart:io';
+import 'package:dartz/dartz.dart';
 
-// class UpdateProfileUseCase {
-//   final ProfileRepository repository;
-//   UpdateProfileUseCase(this.repository);
-
-//   Future<Profile> call(Profile profile) async =>
-//       await repository.updateProfile(profile);
-// }
-import '../repositories/profile_repository.dart';
+import '../../../../core/errors/failures.dart';
 import '../entities/profile.dart';
+import '../repositories/profile_repository.dart';
 
 class UpdateProfileUseCase {
   final ProfileRepository repository;
-
   UpdateProfileUseCase(this.repository);
 
-  Future<Profile> call(Profile profile) async {
-    return await repository.updateProfile(profile);
-  }
+  Future<Either<Failures, Profile>> call(Profile profile, File? imageFile) =>
+      repository.updateProfile(profile, imageFile);
 }

@@ -1,47 +1,39 @@
-abstract class AuthState {
+import 'package:equatable/equatable.dart';
+import '../../domain/entities/user.dart';
+
+abstract class AuthState extends Equatable {
   const AuthState();
+
+  @override
+  List<Object> get props => [];
 }
 
-class AuthInitial extends AuthState {
-  const AuthInitial();
-}
+class AuthInitial extends AuthState {}
 
-class AuthLoading extends AuthState {
-  const AuthLoading();
-}
+class AuthLoading extends AuthState {}
 
-class Authenticated extends AuthState {
-  final bool fromSignIn;
-  const Authenticated({this.fromSignIn = true});
-}
+class Authenticated extends AuthState {}
 
-class Unauthenticated extends AuthState {
-  const Unauthenticated();
-}
+class Unauthenticated extends AuthState {}
 
-class AuthError extends AuthState {
-  final String message;
-  const AuthError(this.message);
-}
+class SignUpEmailSent extends AuthState {}
 
-class ForgetPasswordSent extends AuthState {
-  const ForgetPasswordSent();
-}
-
-class PasswordResetSuccess extends AuthState {
-  const PasswordResetSuccess();
-}
+class ForgetPasswordSent extends AuthState {}
 
 class OTPVerified extends AuthState {
   final String resetToken;
   const OTPVerified(this.resetToken);
+
+  @override
+  List<Object> get props => [resetToken];
 }
 
-class PasswordVerified extends AuthState {
-  const PasswordVerified();
-}
+class PasswordResetSuccess extends AuthState {}
 
-class UserLoaded extends AuthState {
-  final dynamic user;
-  const UserLoaded(this.user);
+class AuthError extends AuthState {
+  final String message;
+  const AuthError(this.message);
+
+  @override
+  List<Object> get props => [message];
 }

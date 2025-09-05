@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import '../../domain/entities/user.dart';
-import '../../domain/entities/otp.dart';
-import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/errors/failures.dart';
+import '../../domain/entities/otp.dart';
+import '../../domain/entities/user.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
 import '../datasources/auth_remote_datasource.dart';
 
@@ -17,25 +17,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failures, User>> signUp({
-    required String firstName,
-    required String lastName,
+    required String full_name,
     required String email,
     required String password,
-    required String birthDate,
-    required String gender,
   }) async {
     try {
       final user = await remoteDatasource.signUp(
-        firstName: firstName,
-        lastName: lastName,
+        full_name: full_name,
         email: email,
         password: password,
-        birthDate: birthDate,
-        gender: gender,
       );
       return Right(user);
     } catch (e) {
-      return Left(ServerFailure());
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
     }
   }
 
@@ -51,7 +47,22 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(user);
     } catch (e) {
-      return Left(ServerFailure());
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failures, void>> logout() async {
+    try {
+      await remoteDatasource
+          .logout(); // Changed to remote datasource to align with its implementation
+      return Right(null);
+    } catch (e) {
+      return Left(
+        CacheFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
     }
   }
 
@@ -59,9 +70,29 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failures, void>> forgetPassword({required String email}) async {
     try {
       await remoteDatasource.forgetPassword(email: email);
-      return const Right(null);
+      return Right(null);
     } catch (e) {
-      return Left(ServerFailure());
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failures, OTP>> verifyOTP({
+    required String email,
+    required String otpCode,
+  }) async {
+    try {
+      final otp = await remoteDatasource.verifyOTP(
+        email: email,
+        otpCode: otpCode,
+      );
+      return Right(otp);
+    } catch (e) {
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
     }
   }
 
@@ -75,9 +106,29 @@ class AuthRepositoryImpl implements AuthRepository {
         token: token,
         newPassword: newPassword,
       );
-      return const Right(null);
+      return Right(null);
     } catch (e) {
-      return Left(ServerFailure());
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
+    }
+  }
+
+  @override
+  Future<Either<Failures, User>> googleSignIn({
+    required String authCode,
+    required String codeVerifier,
+  }) async {
+    try {
+      final user = await remoteDatasource.googleSignIn(
+        authCode: authCode,
+        codeVerifier: codeVerifier,
+      );
+      return Right(user);
+    } catch (e) {
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
     }
   }
 
@@ -87,7 +138,9 @@ class AuthRepositoryImpl implements AuthRepository {
       final user = await remoteDatasource.getMe();
       return Right(user);
     } catch (e) {
-      return Left(ServerFailure());
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
     }
   }
 
@@ -97,53 +150,21 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       await remoteDatasource.verifyPassword(password: password);
-      return const Right(null);
-    } catch (e) {
-      return Left(ServerFailure());
-    }
-  }
-
-  @override
-  Future<Either<Failures, void>> logout() async {
-    try {
-      await localDatasource.clearTokens();
       return Right(null);
     } catch (e) {
-      return Left(CacheFailure());
-    }
-  }
-
-  @override
-  Future<Either<Failures, void>> sendOTP({required String email}) async {
-    try {
-      await remoteDatasource.sendOTP(email: email);
-      return Right(null);
-    } catch (e) {
-      return Left(ServerFailure());
-    }
-  }
-
-  @override
-  Future<Either<Failures, OTP>> verifyOTP({
-    required String email,
-    required String otpCode,
-    //required String? resetToken
-  }) async {
-    try {
-      final otp = await remoteDatasource.verifyOTP(
-        email: email,
-        otpCode: otpCode,
+      return Left(
+        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
       );
-      return Right(otp);
-    } catch (e) {
-      return Left(ServerFailure());
     }
   }
 
   @override
   Future<bool> isLoggedIn() async {
-    final token = await localDatasource.getTokens();
-    // You can add more checks here (e.g. token expiration validation)
-    return token != null && token.isNotEmpty;
+    try {
+      final token = await localDatasource.getTokens();
+      return token != null && token.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
   }
 }

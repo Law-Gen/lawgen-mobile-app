@@ -15,58 +15,65 @@ class OtpPage extends StatefulWidget {
 }
 
 class _OtpPageState extends State<OtpPage> {
-  final List<FocusNode> _focusNodes = List.generate(
-    5,
-    (_) => FocusNode(),
-  ); // for 5 boxes
-  final List<TextEditingController> _controllers = List.generate(
-    5,
-    (_) => TextEditingController(),
-  );
+  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(6, (_) => TextEditingController());
 
-  String get otp =>
-      _controllers.map((c) => c.text.trim()).join(); // combine digits
+  // Helper to combine all digits from the controllers
+  String get _otpCode => _controllers.map((c) => c.text.trim()).join();
 
   @override
   void dispose() {
-    for (var c in _controllers) c.dispose();
-    for (var f in _focusNodes) f.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    for (var focusNode in _focusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
-  void _navigateToResetPassword(String token) {
-    context.go('/resetpassword/$token');
+  void _submitOtp() {
+    // Basic validation before dispatching the event
+    if (_otpCode.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter all 6 digits of the OTP.")),
+      );
+      return;
+    }
+    // Dispatch the event to the BLoC
+    context.read<AuthBloc>().add(
+          VerifyOtpRequested(email: widget.email, otpCode: _otpCode),
+        );
   }
 
+  // Widget for a single OTP input box
   Widget _otpBox(int index) {
     return SizedBox(
-      width: 50,
-      child: TextField(
+      width: 48,
+      height: 48,
+      child: TextFormField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        maxLength: 1,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        maxLength: 1, // Restrict to a single character
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         decoration: InputDecoration(
-          counterText: "",
-          filled: true,
-          fillColor: const Color(0xFFFFFFFF),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD8DADC)),
-          ),
+          counterText: "", // Hide the counter
+          contentPadding: EdgeInsets.zero, // Center the digit vertically
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD8DADC)),
+            borderSide: const BorderSide(color: Colors.grey),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD8DADC), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF0A1D37), width: 2),
           ),
         ),
+        // Logic to automatically move focus to the next/previous box
         onChanged: (value) {
-          if (value.isNotEmpty && index < 4) {
+          if (value.isNotEmpty && index < 5) {
             _focusNodes[index + 1].requestFocus();
           }
           if (value.isEmpty && index > 0) {
@@ -80,102 +87,93 @@ class _OtpPageState extends State<OtpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF), // page background
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            // Correctly using go_router for navigation back to sign in
-            context.go('/signin');
-          },
+          onPressed: () => context.go('/signin'),
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16), // space from edge
-            child: SvgPicture.asset(
-              'assets/logo/logo.svg',
-              height: 32,
-              width: 32,
-            ),
+            padding: const EdgeInsets.only(right: 16),
+            child: SvgPicture.asset('assets/logo/logo.svg', height: 32),
           ),
         ],
       ),
       body: SafeArea(
+        // BlocConsumer is perfect for handling both UI rebuilds (builder)
+        // and one-time actions like navigation (listener).
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is OTPVerified) {
-              // Correcting navigation to match the updated GoRouter config.
+              // On success, navigate to the reset password page with the token
               context.go('/resetpassword/${state.resetToken}');
             } else if (state is AuthError) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.black,
+                ),
+              );
             }
           },
           builder: (context, state) {
+            final isLoading = state is AuthLoading;
+
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 20),
                   const Text(
                     "Verify OTP",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    "Enter the 5-digit OTP sent to ${widget.email}.",
+                    "Enter the 6-digit OTP sent to\n${widget.email}",
                     style: const TextStyle(fontSize: 16, color: Colors.black54),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
 
-                  // OTP boxes
+                  // OTP boxes are generated here
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(5, (index) => _otpBox(index)),
+                    children: List.generate(6, (index) => _otpBox(index)),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
 
-                  // Verify Button
+                  // The main action button
                   SizedBox(
-                    width: double.infinity,
+                    height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (otp.length != 5) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("OTP must be exactly 5 digits."),
-                            ),
-                          );
-                          return;
-                        }
-                        context.read<AuthBloc>().add(
-                          VerifyOtpRequested(email: widget.email, otpCode: otp),
-                        );
-                      },
+                      onPressed: isLoading ? null : _submitOtp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0A1D37),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: state is AuthLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : TextButton(
-                              onPressed: () =>
-                                  _navigateToResetPassword("otpResetToken"),
-                              child: const Text(
-                                'Verify OTP',
-                                style: TextStyle(color: Colors.blueAccent),
+                      // The child of the button changes based on the loading state
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
+                            )
+                          : const Text(
+                              'Verify OTP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
                               ),
                             ),
                     ),
@@ -189,11 +187,3 @@ class _OtpPageState extends State<OtpPage> {
     );
   }
 }
-/*
-TextButton(
-                      onPressed: _navigateToSignIn,
-                      child: const Text(
-                        'Sign In',
-                        style: TextStyle(color: Colors.blueAccent),
-                      ),
-                    ),*/

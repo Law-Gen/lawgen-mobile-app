@@ -7,17 +7,13 @@ class ResetPasswordUseCase {
 
   ResetPasswordUseCase(this.repository);
 
-  Future<Either<Failures, void>> execute({
-    required String token,
-    required String newPassword,
-  }) async {
-    return await repository.resetPassword(token:token, newPassword: newPassword);
-  }
-
   Future<Either<Failures, void>> call({
     required String token,
     required String newPassword,
-  }) {
-    return execute(token: token, newPassword: newPassword);
+  }) async {
+    return await repository.resetPassword(
+      token: token,
+      newPassword: newPassword,
+    );
   }
 }
