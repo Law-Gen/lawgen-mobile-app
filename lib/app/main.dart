@@ -1,31 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../features/catalog/catalog_injection.dart';
 import '../features/quize/quiz_injection.dart';
 import 'router.dart';
+import 'dependency_injection.dart' as di;
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await initQuiz(); // Initialize your quiz dependencies
-  final approuter = AppRouter();
-
-  runApp(MyApp(router: approuter.router));
+  await di.init();
+  await initQuiz();
+  await initCatalog();
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.router});
-  final GoRouter router;
+  const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return (MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      routerConfig: router,
-      // routeInformationParser: router.routeInformationParser,
-    ));
+    final AppRouter appRouter = AppRouter();
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (_) => di.sl<AuthBloc>()..add(AppStarted()),
+        ),
+      ],
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        title: 'LawGen',
+        theme: ThemeData(primarySwatch: Colors.blue),
+        routerConfig: appRouter.router,
+      ),
+    );
   }
 }

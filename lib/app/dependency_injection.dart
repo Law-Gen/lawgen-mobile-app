@@ -1,0 +1,63 @@
+import 'package:get_it/get_it.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:lawgen/features/onboarding_auth/data/datasources/auth_local_datasource.dart';
+import 'package:lawgen/features/onboarding_auth/data/datasources/auth_remote_datasource.dart';
+import 'package:lawgen/features/onboarding_auth/data/repositories/auth_repository_impl.dart';
+import 'package:lawgen/features/onboarding_auth/domain/repositories/auth_repository.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/signin_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/signup_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/forget_password_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/getme_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/logout_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/reset_password_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/verify_password_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/verifyotp_usecase.dart';
+import 'package:lawgen/features/onboarding_auth/domain/usecases/auth_check.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+
+final sl = GetIt.instance;
+
+Future<void> init() async {
+  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => const FlutterSecureStorage());
+
+  sl.registerLazySingleton<AuthRemoteDatasource>(
+    () => AuthRemoteDatasourceImpl(client: sl()),
+  );
+
+  sl.registerLazySingleton<AuthLocalDatasource>(
+    () => AuthLocalDatasourceImpl(secureStorage: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(remoteDatasource: sl(), localDatasource: sl()),
+  );
+
+  // Use Cases
+  sl.registerLazySingleton(() => ForgetPasswordUseCase(sl()));
+  // Ensure the SignInUseCase is registered
+  sl.registerLazySingleton(() => SignInUseCase(sl()));
+  sl.registerLazySingleton(() => LogoutUseCase(sl()));
+  sl.registerLazySingleton(() => SignUpUseCase(sl()));
+  sl.registerLazySingleton(() => GetMeUseCase(sl()));
+  sl.registerLazySingleton(() => ResetPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => VerifyPasswordUseCase(sl()));
+  sl.registerLazySingleton(() => VerifyOTPUseCase(sl()));
+  sl.registerLazySingleton(() => CheckAuthStatusUseCase(sl()));
+
+  sl.registerFactory(
+    () => AuthBloc(
+      signInUseCase: sl(),
+      logoutUseCase: sl(),
+      signUpUseCase: sl(),
+      checkAuthStatusUseCase: sl(),
+      forgetPasswordUseCase: sl(),
+      resetPasswordUseCase: sl(),
+      verifyOTPUseCase: sl(),
+      verifyPasswordUseCase: sl(),
+      getMeUseCase: sl(),
+    ),
+  );
+}
