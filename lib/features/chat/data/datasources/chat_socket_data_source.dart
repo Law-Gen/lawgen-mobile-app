@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 
@@ -56,6 +57,9 @@ class ChatSocketDataSourceImpl implements ChatSocketDataSource {
     Map<String, String>? extraHeaders,
     Duration? connectTimeout,
   }) async {
+    debugPrint(
+        'startResponseStream called: conversationId=$conversationId, prompt=${prompt.length} chars, language=$language');
+
     await cancelCurrentStream();
 
     // Construct the URL with query parameters
@@ -65,31 +69,42 @@ class ChatSocketDataSourceImpl implements ChatSocketDataSource {
       if (conversationId.isNotEmpty) 'sessionId': conversationId,
     });
 
+    final headers = extraHeaders ??
+        {
+          "Accept": "text/event-stream",
+          "Cache-Control": "no-cache",
+        };
+
+    debugPrint('Connecting to SSE: $uri');
+    debugPrint('SSE headers: $headers');
+
     _sseSubscription = SSEClient.subscribeToSSE(
       method: SSERequestType.GET,
       url: uri.toString(),
-      header: extraHeaders ??
-          {
-            "Accept": "text/event-stream",
-            "Cache-Control": "no-cache",
-          },
+      header: headers,
     ).listen(
       (event) {
+        debugPrint('SSE event received: data=${event.data}');
         if (event.data != null) {
           _responseController.add(event.data!);
         }
       },
       onError: (error) {
+        debugPrint('SSE error: $error');
         _responseController.addError(error);
       },
       onDone: () {
+        debugPrint('SSE stream done');
         _responseController.close();
       },
     );
+
+    debugPrint('SSE subscription started');
   }
 
   @override
   Stream<String> responseStream() {
+    debugPrint('responseStream listener requested');
     return _responseController.stream;
   }
 
@@ -99,6 +114,8 @@ class ChatSocketDataSourceImpl implements ChatSocketDataSource {
     required String message,
     String? language,
   }) async {
+    debugPrint(
+        'sendUserMessage called: conversationId=$conversationId, message=${message.length} chars, language=$language');
     // This implementation assumes the SSE endpoint handles the conversation flow.
     // If your backend requires a separate POST request for follow-up messages,
     // you would implement that logic here using an HTTP client like Dio or http.
@@ -107,14 +124,22 @@ class ChatSocketDataSourceImpl implements ChatSocketDataSource {
 
   @override
   Future<void> cancelCurrentStream() async {
-    await _sseSubscription?.cancel();
-    _sseSubscription = null;
+    if (_sseSubscription != null) {
+      debugPrint('Cancelling SSE subscription');
+      await _sseSubscription?.cancel();
+      _sseSubscription = null;
+      debugPrint('SSE subscription cancelled');
+    } else {
+      debugPrint('cancelCurrentStream called but no active subscription');
+    }
   }
 
   @override
   Future<void> dispose() async {
+    debugPrint('Disposing ChatSocketDataSourceImpl');
     await cancelCurrentStream();
     await _responseController.close();
+    debugPrint('Disposed ChatSocketDataSourceImpl');
   }
 }
 

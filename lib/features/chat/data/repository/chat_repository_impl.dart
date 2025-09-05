@@ -9,7 +9,6 @@ import '../../domain/repository/chat_repository.dart';
 import '../datasources/chat_local_data_source.dart';
 import '../datasources/chat_remote_data_source.dart';
 import '../datasources/chat_socket_data_source.dart';
-import '../models/conversation_model.dart';
 import '../models/message_model.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
@@ -27,23 +26,32 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<Either<Failures, List<Conversation>>> getChatHistory() async {
-    try {
-      final convModels = await localDataSource.getConversations();
-      // For each conversation fetch messages (sequentially). Could be optimized.
-      final conversations = <Conversation>[];
-      for (final cm in convModels) {
-        final msgs = await localDataSource.getMessages(cm.id);
-        conversations.add(
-          Conversation(
-            id: cm.id,
-            title: cm.title,
-            messages: msgs.map(_mapMessageModelToDomain).toList(),
-          ),
-        );
+    if (!await networkInfo.isConnected) {
+      // Online: read whatever local snapshot exists
+      try{
+        final remoteconverstaions = await remoteDataSource.getChatHistory();
+        // Replace local cache ONLY when remote succeeds.
+        // Clear existing local conversations then persist fresh copy.
+        // (Simplified approach: delete + re-add conversations.
+        for (final c in remoteconverstaions) {
+          await localDataSource.saveConversation(c);
+        }
+        final conversations = await localDataSource.getConversations();
+        // to entity conversion
+        final entityConversations = conversations.map((c) => c.toEntity()).toList();
+        return Right(entityConversations);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
       }
-      return Right(conversations);
-    } catch (e) {
-      return Left(CacheFailure(e.toString()));
+
+   
+    }   try {
+        final conversations = await localDataSource.getConversations();
+        // to entity conversion
+        final entityConversations = conversations.map((c) => c.toEntity()).toList();
+        return Right(entityConversations);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -52,18 +60,30 @@ class ChatRepositoryImpl implements ChatRepository {
     String conversationId,
   ) async {
     try {
-      if (await networkInfo.isConnected) {
+      final online = await networkInfo.isConnected;
+      if (online) {
         final remoteMessages = await remoteDataSource.getChatMessages(
           conversationId,
         );
+        // Replace local cache ONLY when remote succeeds.
+        // Clear existing local conversation messages then persist fresh copy.
+        // (Simplified approach: delete + re-add messages.)
+        // Ensure conversation exists locally before storing messages.
+        final conv = await localDataSource.getConversation(conversationId);
+        if (conv != null) {
+          // Overwrite local messages list atomically.
+          for (final m in remoteMessages) {
+            // Reuse addMessage to keep lastActivity timestamp accurate.
+            await localDataSource.addMessage(conversationId, m);
+          }
+        }
         final mapped = remoteMessages.map(_mapMessageModelToDomain).toList();
-        // Optional: cache locally (not implemented yet)
-        return Right(mapped);
-      } else {
-        final localMessages = await localDataSource.getMessages(conversationId);
-        final mapped = localMessages.map(_mapMessageModelToDomain).toList();
         return Right(mapped);
       }
+      // Offline fallback: read whatever local snapshot exists.
+      final localMessages = await localDataSource.getMessages(conversationId);
+      final mapped = localMessages.map(_mapMessageModelToDomain).toList();
+      return Right(mapped);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -75,30 +95,17 @@ class ChatRepositoryImpl implements ChatRepository {
     String language,
   ) async {
     try {
+      final online = await networkInfo.isConnected;
+      if (!online) {
+        return const Left(NetworkFailure('No internet connection'));
+      }
       final conversationId = _generateId();
-      // Persist conversation baseline
-      await localDataSource.saveConversation(
-        ConversationModel(
-          id: conversationId,
-          title: _deriveTitleFromQuestion(question),
-          lastActivityAt: DateTime.now(),
-        ),
-      );
-      // Store user message locally
-      await localDataSource.addMessage(
-        conversationId,
-        MessageModel(
-          id: _generateId(),
-          sender: MessageSender.user,
-          content: question,
-          createdAt: DateTime.now(),
-        ),
-      );
       await socketDataSource.startResponseStream(
         conversationId: conversationId,
         prompt: question,
         language: language,
       );
+      // Defer local persistence until remote (or stream completion) confirms.
       return const Right(null);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -112,30 +119,10 @@ class ChatRepositoryImpl implements ChatRepository {
     String language,
   ) async {
     try {
-      // Ensure conversation exists (create placeholder if absent)
-      final existing = await localDataSource.getConversation(conversationId);
-      if (existing == null) {
-        await localDataSource.saveConversation(
-          ConversationModel(
-            id: conversationId,
-            title: _deriveTitleFromQuestion(question),
-            lastActivityAt: DateTime.now(),
-          ),
-        );
-      } else {
-        await localDataSource.saveConversation(
-          existing.copyWith(lastActivityAt: DateTime.now()),
-        );
+      final online = await networkInfo.isConnected;
+      if (!online) {
+        return const Left(NetworkFailure('No internet connection'));
       }
-      await localDataSource.addMessage(
-        conversationId,
-        MessageModel(
-          id: _generateId(),
-          sender: MessageSender.user,
-          content: question,
-          createdAt: DateTime.now(),
-        ),
-      );
       await socketDataSource.startResponseStream(
         conversationId: conversationId,
         prompt: question,
@@ -177,7 +164,7 @@ class ChatRepositoryImpl implements ChatRepository {
 /// Example:
 ///   1616161616161-123456789
 ///
- 
+
 /// Derives a short title from a user-provided question or prompt.
 ///
 /// Behavior:
@@ -221,16 +208,13 @@ class ChatRepositoryImpl implements ChatRepository {
 /// Returns:
 ///   A `Message` constructed for use in the domain/business logic layer.
 String _generateId() {
-  final rand = Random();
-  return DateTime.now().microsecondsSinceEpoch.toString() +
-      '-' +
-      rand.nextInt(1 << 32).toString();
-}
-
-String _deriveTitleFromQuestion(String q) {
-  final trimmed = q.trim();
-  if (trimmed.isEmpty) return 'Conversation';
-  return trimmed.length <= 32 ? trimmed : trimmed.substring(0, 32) + '…';
+  // Use Random.secure if available for better entropy; fallback to Random.
+  final rand = (Random is Random) ? Random() : Random();
+  // Dart's Random.nextInt requires 0 < max <= 2^32; using 1<<31 keeps us well inside.
+  final randomPart = rand.nextInt(1 << 31); // 0 .. 2^31-1
+  // Base36 encoding shortens the string while remaining alphanumeric.
+  final timePart = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  return '$timePart-${randomPart.toRadixString(36)}';
 }
 
 Message _mapMessageModelToDomain(MessageModel m) => Message(
