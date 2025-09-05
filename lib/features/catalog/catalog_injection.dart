@@ -75,5 +75,5 @@ Future<void> initCatalog() async {
   // catalogSL.registerLazySingleton(
   //   () => InternetConnectionChecker.createInstance(),
   // );
-  catalogSL.registerLazySingleton(() => const FlutterSecureStorage());
+ 
 }

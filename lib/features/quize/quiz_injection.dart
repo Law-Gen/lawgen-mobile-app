@@ -62,5 +62,5 @@ Future<void> initQuiz() async {
   quizSl.registerLazySingleton<InternetConnectionChecker>(
     () => InternetConnectionChecker.createInstance(),
   );
-  quizSl.registerLazySingleton(() => http.Client());
+  // quizSl.registerLazySingleton(() => http.Client());
 }
