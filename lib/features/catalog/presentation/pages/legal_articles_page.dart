@@ -188,7 +188,7 @@ class _LegalArticlesPageState extends State<LegalArticlesPage> {
 
 // _ArticleCard remains exactly the same.
 class _ArticleCard extends StatelessWidget {
-  final LegalDocument article;
+  final LegalContent article;
   const _ArticleCard({required this.article});
 
   Future<void> _launchURL(BuildContext context, String url) async {

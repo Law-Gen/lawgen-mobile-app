@@ -1,15 +1,17 @@
 import 'package:equatable/equatable.dart';
 
-class LegalDocument extends Equatable {
+class LegalContent extends Equatable {
   final String id;
+  final String groupId;
   final String groupName;
   final String name;
   final String description;
   final String url;
   final String language;
 
-  const LegalDocument({
+  const LegalContent({
     required this.id,
+    required this.groupId,
     required this.groupName,
     required this.name,
     required this.description,
@@ -18,5 +20,13 @@ class LegalDocument extends Equatable {
   });
 
   @override
-  List<Object> get props => [id, groupName, name, description, url, language];
+  List<Object> get props => [
+    id,
+    groupId,
+    groupName,
+    name,
+    description,
+    url,
+    language,
+  ];
 }

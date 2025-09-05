@@ -1,8 +1,9 @@
 import '../../domain/entities/legal_document.dart';
 
-class LegalDocumentModel extends LegalDocument {
-  const LegalDocumentModel({
+class LegalContentModel extends LegalContent {
+  const LegalContentModel({
     required super.id,
+    required super.groupId,
     required super.groupName,
     required super.name,
     required super.description,
@@ -10,9 +11,10 @@ class LegalDocumentModel extends LegalDocument {
     required super.language,
   });
 
-  factory LegalDocumentModel.fromJson(Map<String, dynamic> json) {
-    return LegalDocumentModel(
+  factory LegalContentModel.fromJson(Map<String, dynamic> json) {
+    return LegalContentModel(
       id: json['id'] as String,
+      groupId: json['group_id'] as String,
       groupName: json['group_name'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
@@ -24,6 +26,7 @@ class LegalDocumentModel extends LegalDocument {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'group_id': groupId,
       'group_name': groupName,
       'name': name,
       'description': description,
@@ -32,9 +35,10 @@ class LegalDocumentModel extends LegalDocument {
     };
   }
 
-  LegalDocument toEntity() {
-    return LegalDocument(
+  LegalContent toEntity() {
+    return LegalContent(
       id: id,
+      groupId: groupId,
       groupName: groupName,
       name: name,
       description: description,

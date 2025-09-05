@@ -5,13 +5,13 @@ import '../entities/paginated_legal_documents.dart';
 import '../repositories/legal_document_repository.dart';
 
 class GetLegalDocumentsUsecase
-    extends UseCase<PaginatedLegalDocuments, GetLegalDocumentsParams> {
+    extends UseCase<PaginatedLegalGroups, GetLegalDocumentsParams> {
   final LegalDocumentRepository repository;
 
   GetLegalDocumentsUsecase(this.repository);
 
   @override
-  Future<Either<Failure, PaginatedLegalDocuments>> call(
+  Future<Either<Failure, PaginatedLegalGroups>> call(
     GetLegalDocumentsParams params,
   ) async {
     return await repository.getLegalDocuments(
