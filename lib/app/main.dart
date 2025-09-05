@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../features/LegalAidDirectory/injection_container.dart';
 import '../features/catalog/catalog_injection.dart';
 import '../features/quize/quiz_injection.dart';
 import 'router.dart';
@@ -12,6 +13,7 @@ void main() async {
   await di.init();
   await initQuiz();
   await initCatalog();
+  initLegalAid();
   runApp(const MyApp());
 }
 

@@ -37,7 +37,7 @@ Future<void> initQuiz() async {
   );
 
   //! Data sources
-  
+
   // THE REAL ONE
   // // Register FlutterSecureStorage as a lazy singleton
   // quizSl.registerLazySingleton(() => const FlutterSecureStorage());
@@ -57,10 +57,10 @@ Future<void> initQuiz() async {
 
   //! Core
   // THIS IS THE FIX: Register NetworkInfo
-  quizSl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(quizSl()));
+  // quizSl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(quizSl()));
 
-  quizSl.registerLazySingleton<InternetConnectionChecker>(
-    () => InternetConnectionChecker.createInstance(),
-  );
-  quizSl.registerLazySingleton(() => http.Client());
+  // quizSl.registerLazySingleton<InternetConnectionChecker>(
+  //   () => InternetConnectionChecker.createInstance(),
+  // );
+  // quizSl.registerLazySingleton(() => http.Client());
 }

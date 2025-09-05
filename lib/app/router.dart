@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/LegalAidDirectory/presentation/pages/legal_aid_directory_page.dart';
 import '../features/onboarding_auth/presentation/pages/forget_password_page.dart';
 import '../features/onboarding_auth/presentation/pages/onboarding_page.dart';
 import '../features/onboarding_auth/presentation/pages/otp_page.dart';
@@ -10,9 +11,6 @@ import '../features/onboarding_auth/presentation/pages/sign_up_page.dart';
 import '../features/onboarding_auth/presentation/pages/success_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-
-
 
 import '../features/catalog/presentation/pages/legal_articles_page.dart';
 import '../features/catalog/presentation/pages/legal_categories_page.dart';
@@ -124,7 +122,7 @@ class AppRouter {
   // Change to `true` to skip onboarding
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: '/legal-aid',
     refreshListenable: hasSeenOnboarding,
     routes: [
       // --- Onboarding ---
@@ -159,7 +157,6 @@ class AppRouter {
       GoRoute(
         path: '/',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Chat (Guest Mode)'),
       ),
 
@@ -233,14 +230,11 @@ class AppRouter {
       // --- Standalone Routes (Without Bottom Navigation) ---
       GoRoute(
         path: '/legal-aid',
-        builder: (context, state) =>
-           
-            const PlaceholderScreen(title: 'Legal Aid Directory'),
+        builder: (context, state) => LegalAidDirectoryPage.withBloc(),
       ),
       GoRoute(
         path: '/subscriptions',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Subscription Plans'),
       ),
 
@@ -248,69 +242,65 @@ class AppRouter {
       GoRoute(
         path: '/admin/dashboard',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Dashboard'),
       ),
       GoRoute(
         path: '/admin/users',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin User Management'),
       ),
       GoRoute(
         path: '/admin/quizzes',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Quizzes'),
       ),
       GoRoute(
         path: '/admin/content',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Content Management'),
       ),
     ],
 
     // --- Redirect Logic ---
-    redirect: (context, state) {
-      final bool isLoggingIn =
-          state.uri.toString() == '/signin' ||
-          state.uri.toString() == '/signup';
-      //final bool isOnboarding = state.uri.toString() == '/onboarding';
+    // --- TEMPORARILY COMMENT OUT THIS ENTIRE BLOCK ---
+    // redirect: (context, state) {
+    //   final bool isLoggingIn =
+    //       state.uri.toString() == '/signin' ||
+    //       state.uri.toString() == '/signup';
+    //   //final bool isOnboarding = state.uri.toString() == '/onboarding';
 
-      // If the user hasn't seen onboarding, redirect them there first.
-      final isOnboarding = state.uri.toString() == '/onboarding';
-      if (!hasSeenOnboarding.value && !isOnboarding) {
-        return '/onboarding';
-      }
-      if (hasSeenOnboarding.value && isOnboarding) {
-        return isAuthenticated.value ? '/chat' : '/';
-      }
+    //   // If the user hasn't seen onboarding, redirect them there first.
+    //   final isOnboarding = state.uri.toString() == '/onboarding';
+    //   if (!hasSeenOnboarding.value && !isOnboarding) {
+    //     return '/onboarding';
+    //   }
+    //   if (hasSeenOnboarding.value && isOnboarding) {
+    //     return isAuthenticated.value ? '/chat' : '/';
+    //   }
 
-      // If the user is not authenticated and is trying to access a protected route,
-      // redirect them to the sign-in page.
-      final isProtected =
-          state.uri.toString().startsWith('/chat') ||
-          state.uri.toString().startsWith('/profile') ||
-          state.uri.toString().startsWith('/admin');
+    //   // If the user is not authenticated and is trying to access a protected route,
+    //   // redirect them to the sign-in page.
+    //   final isProtected =
+    //       state.uri.toString().startsWith('/chat') ||
+    //       state.uri.toString().startsWith('/profile') ||
+    //       state.uri.toString().startsWith('/admin');
 
-      // if (!isAuthenticated && isProtected) {
-      //   return '/signin';
-      // }
+    //   // if (!isAuthenticated && isProtected) {
+    //   //   return '/signin';
+    //   // }
 
-      // // If the user is already authenticated and tries to go to the sign-in/sign-up page,
-      // // redirect them to the logged-in chat screen.
-      // if (isAuthenticated && isLoggingIn) {
-      //   return '/chat';
-      // }
+    //   // // If the user is already authenticated and tries to go to the sign-in/sign-up page,
+    //   // // redirect them to the logged-in chat screen.
+    //   // if (isAuthenticated && isLoggingIn) {
+    //   //   return '/chat';
+    //   // }
 
-      // No redirect needed.
-      return null;
-    },
+    //   // No redirect needed.
+    //   return null;
+    // },
 
     // --- Error Handling ---
     errorBuilder: (context, state) =>
-       
         const PlaceholderScreen(title: '404 - Page Not Found'),
   );
 }
