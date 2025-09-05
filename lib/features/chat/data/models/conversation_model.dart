@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../domain/entities/conversation.dart';
 import 'message_model.dart';
 
 part 'conversation_model.g.dart';
@@ -27,4 +28,14 @@ class ConversationModel {
     title: title ?? this.title,
     lastActivityAt: lastActivityAt ?? this.lastActivityAt,
   );
+
+  // Convert ConversationModel to Conversation entity
+  
+  Conversation toEntity(List<MessageModel> messages) {
+    return Conversation(
+      id: id,
+      title: title,
+      messages: messages.map((msg) => msg.toEntity()).toList(),
+    );
+  }
 }

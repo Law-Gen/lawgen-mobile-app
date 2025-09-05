@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../../domain/entities/message.dart';
+
 part 'message_model.g.dart';
 
 @HiveType(typeId: 2)
@@ -39,4 +41,11 @@ class MessageModel {
     content: content ?? this.content,
     createdAt: createdAt ?? this.createdAt,
   );
+  // Convert MessageModel to Message entity
+  Message toEntity() {
+    return Message(
+      role: sender == MessageSender.user ? 'user' : 'ai',
+      content: content,
+    );
+  }
 }
