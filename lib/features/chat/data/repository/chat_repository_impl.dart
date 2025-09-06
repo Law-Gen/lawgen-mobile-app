@@ -19,12 +19,25 @@ class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource remoteDataSource;
   final ChatSocketDataSource socketDataSource;
 
+  // Session ID management for conversations
+  final Map<String, String> _sessionIdMap = {};
+
   ChatRepositoryImpl({
     required this.networkInfo,
     required this.localDataSource,
     required this.remoteDataSource,
     required this.socketDataSource,
   });
+
+  /// Store session ID for a conversation
+  void setSessionId(String conversationId, String sessionId) {
+    _sessionIdMap[conversationId] = sessionId;
+  }
+
+  /// Get session ID for a conversation
+  String? getSessionId(String conversationId) {
+    return _sessionIdMap[conversationId];
+  }
 
   @override
   Future<Either<Failures, List<Conversation>>> getChatHistory() async {
@@ -102,11 +115,13 @@ class ChatRepositoryImpl implements ChatRepository {
         createdAt: DateTime.now(),
       );
       await localDataSource.addMessage(conversationId, userMsg);
+
+      // Start new conversation stream (no session ID)
       final stream = socketDataSource.startResponseStream(
-        conversationId: conversationId,
         prompt: question,
         language: language,
       );
+
       return Right(AskResult(conversationId: conversationId, stream: stream));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -130,12 +145,33 @@ class ChatRepositoryImpl implements ChatRepository {
         createdAt: DateTime.now(),
       );
       await localDataSource.addMessage(conversationId, userMsg);
-      final stream = socketDataSource.startResponseStream(
-        conversationId: conversationId,
-        prompt: question,
-        language: language,
+
+      // Get session ID for this conversation
+      final sessionId = getSessionId(conversationId);
+
+      Stream<ChatEvent> stream;
+      if (sessionId != null) {
+        // Use follow-up stream with session ID
+        stream = socketDataSource.startFollowUpStream(
+          sessionId: sessionId,
+          prompt: question,
+          language: language,
+        );
+      } else {
+        // No session ID yet, start as new conversation
+        stream = socketDataSource.startResponseStream(
+          prompt: question,
+          language: language,
+        );
+      }
+
+      return Right(
+        AskResult(
+          conversationId: conversationId,
+          stream: stream,
+          sessionId: sessionId,
+        ),
       );
-      return Right(AskResult(conversationId: conversationId, stream: stream));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

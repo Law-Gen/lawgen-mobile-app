@@ -1,35 +1,96 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:http/http.dart' as http;
 
-/// Contract for Server-Sent Events (SSE) based AI response streaming using
-/// the `flutter_client_sse` package.
+/// Session ID received event from backend
+class SessionIdReceived {
+  final String sessionId;
+  const SessionIdReceived(this.sessionId);
+}
+
+/// Chat response chunk with text and optional sources
+class MessageChunk {
+  final String text;
+  final List<Map<String, dynamic>>? sources;
+  const MessageChunk({required this.text, this.sources});
+}
+
+/// Stream completion event with optional final text and suggested questions
+class StreamCompleted {
+  final String? finalText;
+  final List<String>? suggestedQuestions;
+  const StreamCompleted({this.finalText, this.suggestedQuestions});
+}
+
+/// Error event from the stream
+class StreamError {
+  final String message;
+  const StreamError(this.message);
+}
+
+/// Union type for all possible SSE events
+class ChatEvent {
+  final SessionIdReceived? sessionIdReceived;
+  final MessageChunk? messageChunk;
+  final StreamCompleted? streamCompleted;
+  final StreamError? streamError;
+
+  ChatEvent.sessionId(String sessionId)
+    : sessionIdReceived = SessionIdReceived(sessionId),
+      messageChunk = null,
+      streamCompleted = null,
+      streamError = null;
+
+  ChatEvent.message({required String text, List<Map<String, dynamic>>? sources})
+    : sessionIdReceived = null,
+      messageChunk = MessageChunk(text: text, sources: sources),
+      streamCompleted = null,
+      streamError = null;
+
+  ChatEvent.completed({String? finalText, List<String>? suggestedQuestions})
+    : sessionIdReceived = null,
+      messageChunk = null,
+      streamCompleted = StreamCompleted(
+        finalText: finalText,
+        suggestedQuestions: suggestedQuestions,
+      ),
+      streamError = null;
+
+  ChatEvent.error(String message)
+    : sessionIdReceived = null,
+      messageChunk = null,
+      streamCompleted = null,
+      streamError = StreamError(message);
+}
+
+/// Contract for Server-Sent Events (SSE) based AI response streaming with session management
 ///
 /// Typical flow:
-/// 1. call [startResponseStream] with request metadata (e.g. conversation / question).
-/// 2. listen to the returned [Stream] for incremental tokens / chunks.
-/// 3. optionally call [cancelCurrentStream] to abort.
-/// 4. call [dispose] on shutdown.
+/// 1. call [startResponseStream] with prompt (no session ID for first request)
+/// 2. listen to the returned [Stream<ChatEvent>] for events
+/// 3. capture session ID from SessionIdReceived event
+/// 4. use session ID for follow-up requests with [startFollowUpStream]
+/// 5. optionally call [cancelCurrentStream] to abort
+/// 6. call [dispose] on shutdown
 abstract class ChatSocketDataSource {
-  /// Open an SSE connection for a new AI response.
-  /// Any existing active stream should be cancelled first.
-  /// Returns a stream of raw textual chunks from the SSE server.
-  Stream<String> startResponseStream({
-    required String conversationId,
+  /// Start a new conversation stream (without session ID)
+  /// Returns a stream of ChatEvent objects including session ID
+  Stream<ChatEvent> startResponseStream({
     required String prompt,
     required String language,
     Map<String, String>? extraHeaders,
     Duration? connectTimeout,
   });
 
-  /// Send a follow-up user message over a non-streaming channel if required by backend.
-  /// (Some SSE backends require an HTTP POST instead; implement as no-op if unused.)
-  Future<void> sendUserMessage({
-    required String conversationId,
-    required String message,
-    String? language,
+  /// Continue an existing conversation stream (with session ID)
+  /// Returns a stream of ChatEvent objects
+  Stream<ChatEvent> startFollowUpStream({
+    required String sessionId,
+    required String prompt,
+    required String language,
+    Map<String, String>? extraHeaders,
+    Duration? connectTimeout,
   });
 
   /// Cancel the currently active SSE stream (closes underlying connection).
@@ -40,171 +101,338 @@ abstract class ChatSocketDataSource {
 }
 
 class ChatSocketDataSourceImpl implements ChatSocketDataSource {
-  StreamSubscription? _sseSubscription;
-  StreamController<String>? _responseController;
-  bool _manuallyCancelled = false;
-  // Configurable endpoint and retry policy
-  final String baseUrl;
-  final int maxRetries; // number of reconnection attempts after an error
+  final http.Client client;
+  final int maxRetries;
   final Duration initialBackoff;
   final double backoffMultiplier;
 
+  StreamSubscription? _sseSubscription;
+  StreamController<ChatEvent>? _responseController;
+  bool _manuallyCancelled = false;
+  // API endpoint URL
+  static const String DEFAULT_QUERY_URL =
+      'https://lawgen-backend-3ln1.onrender.com/api/v1/chats/query';
+
   ChatSocketDataSourceImpl({
-    String? baseUrl,
-    this.maxRetries = 0,
+    required this.client,
+
+    this.maxRetries = 3,
     Duration? initialBackoff,
     this.backoffMultiplier = 2.0,
-  }) : baseUrl = baseUrl ?? _platformDefaultUrl(),
-       initialBackoff = initialBackoff ?? const Duration(seconds: 2);
-
-  static String _platformDefaultUrl() {
-    // On Android emulator, host machine's localhost is 10.0.2.2
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:5000/stream';
-    }
-    return 'http://127.0.0.1:5000/stream';
-  }
+  }) : initialBackoff = initialBackoff ?? const Duration(seconds: 2);
 
   @override
-  Stream<String> startResponseStream({
-    required String conversationId,
+  Stream<ChatEvent> startResponseStream({
     required String prompt,
     required String language,
     Map<String, String>? extraHeaders,
     Duration? connectTimeout,
   }) {
+    return _startStream(
+      prompt: prompt,
+      language: language,
+      sessionId: null, // No session ID for first request
+      extraHeaders: extraHeaders,
+      connectTimeout: connectTimeout,
+    );
+  }
+
+  @override
+  Stream<ChatEvent> startFollowUpStream({
+    required String sessionId,
+    required String prompt,
+    required String language,
+    Map<String, String>? extraHeaders,
+    Duration? connectTimeout,
+  }) {
+    return _startStream(
+      prompt: prompt,
+      language: language,
+      sessionId: sessionId, // Include session ID for follow-up
+      extraHeaders: extraHeaders,
+      connectTimeout: connectTimeout,
+    );
+  }
+
+  Stream<ChatEvent> _startStream({
+    required String prompt,
+    required String language,
+    String? sessionId,
+    Map<String, String>? extraHeaders,
+    Duration? connectTimeout,
+  }) {
     debugPrint(
-      'startResponseStream called: conversationId=$conversationId, prompt=${prompt.length} chars, language=$language, maxRetries=$maxRetries',
+      'ChatSocketDataSource: Starting stream for prompt (${prompt.length} chars), sessionId=$sessionId, language=$language',
     );
 
-    // Cancel any existing stream before starting a new one.
+    // Cancel any existing stream
     cancelCurrentStream();
     _manuallyCancelled = false;
-    _responseController = StreamController<String>();
+    _responseController = StreamController<ChatEvent>();
 
-    final headers =
-        extraHeaders ??
-        {'Accept': 'text/event-stream', 'Cache-Control': 'no-cache'};
+    _connectToStream(
+      prompt: prompt,
+      language: language,
+      sessionId: sessionId,
+      extraHeaders: extraHeaders,
+      connectTimeout: connectTimeout,
+    );
 
-    int attempts = 0;
-    Duration backoff = initialBackoff;
-    final Duration firstChunkTimeout =
-        connectTimeout ?? const Duration(seconds: 40);
-    Timer? firstChunkTimer;
-
-    void scheduleFirstChunkTimer() {
-      firstChunkTimer?.cancel();
-      firstChunkTimer = Timer(firstChunkTimeout, () async {
-        if (_manuallyCancelled) return;
-        debugPrint(
-          'SSE first-chunk timeout after ${firstChunkTimeout.inSeconds}s',
-        );
-        _responseController?.addError(
-          TimeoutException(
-            'SSE start timeout after ${firstChunkTimeout.inSeconds}s',
-          ),
-        );
-        _manuallyCancelled = true;
-        await _sseSubscription?.cancel();
-        _sseSubscription = null;
-        await _responseController?.close();
-      });
-    }
-
-    void connect() {
-      if (_manuallyCancelled) return;
-      final uri = Uri.parse(baseUrl).replace(
-        queryParameters: {
-          'prompt': prompt,
-          'language': language,
-          if (conversationId.isNotEmpty) 'sessionId': conversationId,
-        },
-      );
-
-      debugPrint('Connecting to SSE: $uri (attempt ${attempts + 1})');
-      debugPrint('SSE headers: $headers');
-
-      scheduleFirstChunkTimer();
-
-      _sseSubscription =
-          SSEClient.subscribeToSSE(
-            method: SSERequestType.GET,
-            url: uri.toString(),
-            header: headers,
-          ).listen(
-            (event) {
-              // First chunk arrived; cancel the timeout
-              firstChunkTimer?.cancel();
-              firstChunkTimer = null;
-              if (event.data != null) {
-                final data = event.data!.trim();
-                // Treat "[Done]" / "[DONE]" as an end-of-stream sentinel
-                if (data.toLowerCase() == '[done]') {
-                  debugPrint('SSE received [Done] sentinel; completing stream');
-                  // Close our outward stream and cancel the SSE subscription
-                  if (!(_responseController?.isClosed ?? true)) {
-                    _responseController?.close();
-                  }
-                  _sseSubscription?.cancel();
-                  _sseSubscription = null;
-                  return;
-                }
-                _responseController?.add(data);
-              }
-            },
-            onError: (error) async {
-              // Cancel first-chunk timer on error
-              firstChunkTimer?.cancel();
-              firstChunkTimer = null;
-              if (_manuallyCancelled) return;
-              debugPrint('SSE error: $error');
-              _responseController?.addError(error);
-              await _sseSubscription?.cancel();
-              _sseSubscription = null;
-              if (attempts < maxRetries) {
-                attempts += 1;
-                final delay = backoff;
-                backoff = Duration(
-                  milliseconds: (backoff.inMilliseconds * backoffMultiplier)
-                      .round(),
-                );
-                debugPrint(
-                  'Retrying SSE in ${delay.inMilliseconds}ms (attempt $attempts/$maxRetries)',
-                );
-                Future.delayed(delay, () {
-                  if (!_manuallyCancelled) connect();
-                });
-              } else {
-                await _responseController?.close();
-              }
-            },
-            onDone: () async {
-              // Cancel first-chunk timer on stream completion
-              firstChunkTimer?.cancel();
-              firstChunkTimer = null;
-              if (_manuallyCancelled) return;
-              debugPrint('SSE stream done');
-              await _responseController?.close();
-            },
-            cancelOnError: false,
-          );
-    }
-
-    connect();
     return _responseController!.stream;
   }
 
-  // This method is kept for completeness of the abstract class implementation.
-  @override
-  Future<void> sendUserMessage({
-    required String conversationId,
-    required String message,
-    String? language,
+  Future<void> _connectToStream({
+    required String prompt,
+    required String language,
+    String? sessionId = null,
+    Map<String, String>? extraHeaders,
+    Duration? connectTimeout,
   }) async {
-    debugPrint(
-      'sendUserMessage called: conversationId=$conversationId, message=${message.length} chars, language=$language',
-    );
-    // Implementation would go here if needed.
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      // 'Connection': 'keep-alive',
+      ...?extraHeaders,
+    };
+
+    int attempts = 0;
+    Duration backoff = initialBackoff;
+    final timeout = connectTimeout ?? const Duration(seconds: 30);
+
+    void connect() async {
+      if (_manuallyCancelled) return;
+
+      attempts++;
+      debugPrint(
+        'ChatSocketDataSource: Connecting to $DEFAULT_QUERY_URL (attempt $attempts)',
+      );
+
+      Timer? timeoutTimer;
+      String sseBuffer = '';
+
+      void cleanup() {
+        timeoutTimer?.cancel();
+        if (!(_responseController?.isClosed ?? true)) {
+          _responseController?.close();
+        }
+      }
+
+      void handleSSEEvent(String eventType, String data) {
+        try {
+          switch (eventType) {
+            case 'session_id':
+              final payload = jsonDecode(data) as Map<String, dynamic>;
+              print(payload);
+              final sessionId = payload['id']?.toString();
+              print(sessionId);
+              if (sessionId != null && sessionId.isNotEmpty) {
+                _responseController?.add(ChatEvent.sessionId(sessionId));
+              }
+              break;
+
+            case 'message':
+              final payload = jsonDecode(data) as Map<String, dynamic>;
+              print(payload);
+              final text = payload['text']?.toString() ?? '';
+              print(text);
+              final sourcesData = payload['sources'] as List?;
+              final sources = sourcesData
+                  ?.map((s) => s as Map<String, dynamic>)
+                  .toList();
+              print(sources);
+              if (text.isNotEmpty || (sources?.isNotEmpty ?? false)) {
+                _responseController?.add(
+                  ChatEvent.message(text: text, sources: sources),
+                );
+              }
+              break;
+
+            case 'complete':
+              final payload = jsonDecode(data) as Map<String, dynamic>;
+              final finalText = payload['is_complete']?.toString();
+              print(finalText);
+              _responseController?.add(
+                ChatEvent.completed(finalText: finalText),
+              );
+
+              // Stream is complete, clean up
+              cleanup();
+              break;
+
+            case 'error':
+              final payload = jsonDecode(data) as Map<String, dynamic>;
+              final message = payload['message']?.toString() ?? data;
+              _responseController?.add(ChatEvent.error(message));
+              cleanup();
+              break;
+
+            default:
+              debugPrint(
+                'ChatSocketDataSource: Unknown event type: $eventType',
+              );
+          }
+        } catch (error) {
+          debugPrint(
+            'ChatSocketDataSource: Error processing event $eventType: $error',
+          );
+          _responseController?.add(
+            ChatEvent.error('Failed to process server event: $error'),
+          );
+        }
+      }
+
+      void parseSSEEvent(String rawEvent) {
+        String? eventType;
+        String data = '';
+
+        // Parse SSE format: event: type\ndata: payload
+        for (String line in rawEvent.split('\n')) {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ')) {
+            if (data.isNotEmpty) data += '\n';
+            data += line.substring(6).trim();
+          }
+        }
+
+        if (eventType == null || data.isEmpty) return;
+
+        debugPrint(
+          'ChatSocketDataSource: Received event: $eventType, data: ${data.length} chars',
+        );
+        handleSSEEvent(eventType, data);
+      }
+
+      void processSSEBuffer() {
+        // Process complete SSE events (separated by \n\n)
+        List<String> events = sseBuffer.split('\n\n');
+
+        // Keep the last incomplete event in buffer
+        if (events.isNotEmpty && !sseBuffer.endsWith('\n\n')) {
+          sseBuffer = events.removeLast();
+        } else {
+          sseBuffer = '';
+        }
+
+        for (String rawEvent in events) {
+          if (rawEvent.trim().isEmpty) continue;
+          parseSSEEvent(rawEvent.trim());
+        }
+      }
+
+      Future<void> handleStreamError(dynamic error) async {
+        timeoutTimer?.cancel();
+
+        if (_manuallyCancelled) return;
+
+        debugPrint(
+          'ChatSocketDataSource: Stream error (attempt $attempts): $error',
+        );
+
+        await _sseSubscription?.cancel();
+        _sseSubscription = null;
+
+        if (attempts <= maxRetries) {
+          final delay = Duration(
+            milliseconds:
+                (backoff.inMilliseconds *
+                        (attempts > 1 ? backoffMultiplier : 1))
+                    .round(),
+          );
+
+          debugPrint(
+            'ChatSocketDataSource: Retrying in ${delay.inMilliseconds}ms...',
+          );
+
+          Timer(delay, () {
+            if (!_manuallyCancelled) {
+              backoff = Duration(
+                milliseconds: (backoff.inMilliseconds * backoffMultiplier)
+                    .round(),
+              );
+              connect();
+            }
+          });
+        } else {
+          debugPrint('ChatSocketDataSource: Max retries exceeded, failing');
+          _responseController?.add(
+            ChatEvent.error(
+              'Connection failed after $maxRetries attempts: $error',
+            ),
+          );
+          cleanup();
+        }
+      }
+
+      // Build request body exactly as Go backend expects
+      final requestBody = <String, dynamic>{
+        'query': prompt,
+        'language': language,
+      };
+
+      // Only include sessionId if provided (for follow-ups)
+      if (sessionId != null && sessionId.isNotEmpty) {
+        requestBody['sessionId'] = sessionId;
+      }
+
+      // Start timeout
+      timeoutTimer = Timer(timeout, () {
+        if (!_manuallyCancelled) {
+          debugPrint(
+            'ChatSocketDataSource: Request timeout after ${timeout.inSeconds}s',
+          );
+          _responseController?.add(
+            ChatEvent.error('Request timeout after ${timeout.inSeconds}s'),
+          );
+          cleanup();
+        }
+      });
+
+      try {
+        final request = http.Request('POST', Uri.parse(DEFAULT_QUERY_URL))
+          ..headers.addAll(headers)
+          ..body = jsonEncode(requestBody);
+
+        debugPrint('ChatSocketDataSource: Request body: ${request.body}');
+
+        final streamedResponse = await client.send(request);
+
+        if (streamedResponse.statusCode != 200) {
+          throw Exception(
+            'HTTP ${streamedResponse.statusCode}: ${streamedResponse.reasonPhrase}',
+          );
+        }
+
+        timeoutTimer.cancel();
+        debugPrint(
+          'ChatSocketDataSource: Connected successfully, status: ${streamedResponse.statusCode}',
+        );
+
+        // Process SSE stream
+        _sseSubscription = streamedResponse.stream
+            .transform(const Utf8Decoder())
+            .listen(
+              (chunk) {
+                if (_manuallyCancelled) return;
+
+                sseBuffer += chunk;
+                processSSEBuffer();
+              },
+              onError: (error) => handleStreamError(error),
+              onDone: () {
+                debugPrint('ChatSocketDataSource: Stream completed');
+                cleanup();
+              },
+              cancelOnError: false,
+            );
+      } catch (error) {
+        timeoutTimer.cancel();
+        await handleStreamError(error);
+      }
+    }
+
+    connect();
   }
 
   @override
@@ -230,4 +458,19 @@ class ChatSocketDataSourceImpl implements ChatSocketDataSource {
     await cancelCurrentStream();
     debugPrint('Disposed ChatSocketDataSourceImpl');
   }
+}
+
+/// Base URLs for API endpoints
+class ChatApiEndpoints {
+  /// URL for initial chat queries
+  static const String queryUrl =
+      'https://lawgen-backend-3ln1.onrender.com/api/v1/chats/query';
+
+  /// URL for follow-up chat queries
+  static const String followUpUrl =
+      'https://lawgen-backend-3ln1.onrender.com/api/v1/chats/followup';
+
+  /// Get the appropriate URL based on whether it's a follow-up or not
+  static String getUrl({required bool isFollowUp}) =>
+      isFollowUp ? followUpUrl : queryUrl;
 }
