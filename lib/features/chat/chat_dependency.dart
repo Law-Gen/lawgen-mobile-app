@@ -56,7 +56,7 @@ Future<void> setupChatFeatureDependencies() async {
   }
   if (!chatsl.isRegistered<ChatSocketDataSource>()) {
     chatsl.registerLazySingleton<ChatSocketDataSource>(
-      () => ChatSocketDataSourceImpl(),
+      () => ChatSocketDataSourceImpl(client: chatsl()),
     );
   }
 
@@ -101,7 +101,8 @@ Future<void> setupChatFeatureDependencies() async {
         askQuestionUseCase: chatsl(),
         askFollowUpUseCase: chatsl(),
         stopStreamUseCase: chatsl(),
-  saveAiMessageUseCase: chatsl(),
+        saveAiMessageUseCase: chatsl(),
+        repository: chatsl<ChatRepository>() as ChatRepositoryImpl,
       ),
     );
   }

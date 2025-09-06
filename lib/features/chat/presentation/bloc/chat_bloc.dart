@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
+import '../../data/datasources/chat_socket_data_source.dart' as socket;
+import '../../data/repository/chat_repository_impl.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/usecases/ask_follow_up_usecase.dart';
@@ -23,6 +25,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final AskFollowUpUseCase askFollowUpUseCase;
   final StopAskQuestionStreamUseCase stopStreamUseCase;
   final SaveAiMessageUseCase saveAiMessageUseCase;
+  final ChatRepositoryImpl repository; // For session ID management
 
   StreamSubscription? _streamSub;
   // Tracks the active conversation id for current user/AI exchange
@@ -35,6 +38,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     required this.askFollowUpUseCase,
     required this.stopStreamUseCase,
     required this.saveAiMessageUseCase,
+    required this.repository,
   }) : super(ChatInitial()) {
     print('[ChatBloc] created');
     on<LoadConversations>(_onLoadConversations);
@@ -249,10 +253,36 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     );
   }
 
-  void _subscribeToStream(Stream<String> stream, String conversationId) {
+  void _subscribeToStream(
+    Stream<socket.ChatEvent> stream,
+    String conversationId,
+  ) {
     _streamSub?.cancel();
     _streamSub = stream.listen(
-      (chunk) => add(StreamResponseChunk(conversationId, 'ai-temp', chunk)),
+      (event) {
+        if (event.sessionIdReceived != null) {
+          // Store session ID for this conversation
+          repository.setSessionId(
+            conversationId,
+            event.sessionIdReceived!.sessionId,
+          );
+        } else if (event.messageChunk != null) {
+          // Handle text chunk
+          add(
+            StreamResponseChunk(
+              conversationId,
+              'ai-temp',
+              event.messageChunk!.text,
+            ),
+          );
+        } else if (event.streamCompleted != null) {
+          // Handle completion
+          add(StreamResponseCompleted(conversationId, 'ai-temp'));
+        } else if (event.streamError != null) {
+          // Handle error
+          add(StreamResponseError(conversationId, event.streamError!.message));
+        }
+      },
       onError: (e) => add(StreamResponseError(conversationId, e.toString())),
       onDone: () => add(StreamResponseCompleted(conversationId, 'ai-temp')),
       cancelOnError: false,
