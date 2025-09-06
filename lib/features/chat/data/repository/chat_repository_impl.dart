@@ -6,10 +6,12 @@ import '../../../../core/utils/internet_connection.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/repository/chat_repository.dart';
+import '../../domain/entities/ask_result.dart';
 import '../datasources/chat_local_data_source.dart';
 import '../datasources/chat_remote_data_source.dart';
 import '../datasources/chat_socket_data_source.dart';
 import '../models/message_model.dart';
+import '../models/conversation_model.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final NetworkInfo networkInfo;
@@ -26,32 +28,20 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<Either<Failures, List<Conversation>>> getChatHistory() async {
-    if (!await networkInfo.isConnected) {
-      // Online: read whatever local snapshot exists
-      try{
-        final remoteconverstaions = await remoteDataSource.getChatHistory();
-        // Replace local cache ONLY when remote succeeds.
-        // Clear existing local conversations then persist fresh copy.
-        // (Simplified approach: delete + re-add conversations.
-        for (final c in remoteconverstaions) {
-          await localDataSource.saveConversation(c);
-        }
-        final conversations = await localDataSource.getConversations();
-        // to entity conversion
-        final entityConversations = conversations.map((c) => c.toEntity()).toList();
-        return Right(entityConversations);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.getChatHistory();
+        // For now we just ignore remote conversations population until
+        // a proper merge strategy is defined. We keep existing local cache.
+      } catch (_) {
+        // Ignore remote failure; fallback to cached data below.
       }
-
-   
-    }   try {
-        final conversations = await localDataSource.getConversations();
-        // to entity conversion
-        final entityConversations = conversations.map((c) => c.toEntity()).toList();
-        return Right(entityConversations);
-      } catch (e) {
-        return Left(ServerFailure(e.toString()));
+    }
+    try {
+      final local = await localDataSource.getConversations();
+      return Right(local.map((c) => c.toEntity()).toList());
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
     }
   }
 
@@ -90,55 +80,84 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<Failures, void>> askQuestion(
-    String question,
-    String language,
-  ) async {
+  Future<Either<Failures, AskResult>> askQuestion({
+    required String question,
+    required String language,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure('No internet connection'));
+    }
     try {
-      final online = await networkInfo.isConnected;
-      if (!online) {
-        return const Left(NetworkFailure('No internet connection'));
-      }
       final conversationId = _generateId();
-      await socketDataSource.startResponseStream(
+      final conversation = ConversationModel(
+        id: conversationId,
+        title: _deriveTitle(question),
+        lastActivityAt: DateTime.now(),
+      );
+      await localDataSource.saveConversation(conversation);
+      final userMsg = MessageModel(
+        id: _generateId(),
+        sender: MessageSender.user,
+        content: question,
+        createdAt: DateTime.now(),
+      );
+      await localDataSource.addMessage(conversationId, userMsg);
+      final stream = socketDataSource.startResponseStream(
         conversationId: conversationId,
         prompt: question,
         language: language,
       );
-      // Defer local persistence until remote (or stream completion) confirms.
-      return const Right(null);
+      return Right(AskResult(conversationId: conversationId, stream: stream));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
-  Future<Either<Failures, void>> askFollowUpQuestion(
-    String conversationId,
-    String question,
-    String language,
-  ) async {
+  Future<Either<Failures, AskResult>> askFollowUpQuestion({
+    required String conversationId,
+    required String question,
+    required String language,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure('No internet connection'));
+    }
     try {
-      final online = await networkInfo.isConnected;
-      if (!online) {
-        return const Left(NetworkFailure('No internet connection'));
-      }
-      await socketDataSource.startResponseStream(
+      final userMsg = MessageModel(
+        id: _generateId(),
+        sender: MessageSender.user,
+        content: question,
+        createdAt: DateTime.now(),
+      );
+      await localDataSource.addMessage(conversationId, userMsg);
+      final stream = socketDataSource.startResponseStream(
         conversationId: conversationId,
         prompt: question,
         language: language,
       );
-      return const Right(null);
+      return Right(AskResult(conversationId: conversationId, stream: stream));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }
 
   @override
-  Stream<Either<Failures, String>> aiResponseStream() {
-    return socketDataSource.responseStream().map<Either<Failures, String>>(
-      (chunk) => Right(chunk),
-    );
+  Future<Either<Failures, void>> saveAiMessage({
+    required String conversationId,
+    required String content,
+  }) async {
+    try {
+      final aiMsg = MessageModel(
+        id: _generateId(),
+        sender: MessageSender.ai,
+        content: content,
+        createdAt: DateTime.now(),
+      );
+      await localDataSource.addMessage(conversationId, aiMsg);
+      return const Right(null);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
   }
 
   @override
@@ -221,3 +240,10 @@ Message _mapMessageModelToDomain(MessageModel m) => Message(
   role: m.sender == MessageSender.user ? 'user' : 'ai',
   content: m.content,
 );
+
+String _deriveTitle(String q) {
+  final t = q.trim();
+  if (t.isEmpty) return 'Conversation';
+  if (t.length <= 32) return t;
+  return t.substring(0, 32) + '…';
+}

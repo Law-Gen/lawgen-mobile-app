@@ -1,20 +1,5 @@
-import 'package:dartz/dartz.dart';
-
-import '../../../../core/errors/faliures.dart';
-import '../repository/chat_repository.dart';
-
+// Deprecated: legacy streaming use case removed.
+// Kept as empty stub to avoid import errors in any untouched files.
 class AiResponseUsecase {
-  final ChatRepository repository;
-
-  AiResponseUsecase(this.repository);
-
-  Stream<Either<Failures, String>> call(
-    String conversationId,
-    String question,
-    String language,
-  ) {
-    return repository.aiResponseStream(
-  
-    );
-  }
+  AiResponseUsecase(Object _);
 }

@@ -18,8 +18,8 @@ import 'domain/usecases/ask_question_usecase.dart';
 import 'domain/usecases/ask_follow_up_usecase.dart';
 import 'domain/usecases/get_chat_history_usecase.dart';
 import 'domain/usecases/get_chat_message_usecase.dart';
-import 'domain/usecases/ai_response_usecase.dart';
 import 'domain/usecases/stop_ask_question_stream.dart';
+import 'domain/usecases/save_ai_message_usecase.dart';
 
 // Presentation
 import 'presentation/bloc/chat_bloc.dart';
@@ -85,11 +85,11 @@ Future<void> setupChatFeatureDependencies() async {
   if (!chatsl.isRegistered<AskFollowUpUseCase>()) {
     chatsl.registerLazySingleton(() => AskFollowUpUseCase(chatsl()));
   }
-  if (!chatsl.isRegistered<AiResponseUsecase>()) {
-    chatsl.registerLazySingleton(() => AiResponseUsecase(chatsl()));
-  }
   if (!chatsl.isRegistered<StopAskQuestionStreamUseCase>()) {
     chatsl.registerLazySingleton(() => StopAskQuestionStreamUseCase(chatsl()));
+  }
+  if (!chatsl.isRegistered<SaveAiMessageUseCase>()) {
+    chatsl.registerLazySingleton(() => SaveAiMessageUseCase(chatsl()));
   }
 
   // Bloc
@@ -100,8 +100,8 @@ Future<void> setupChatFeatureDependencies() async {
         getChatMessageUsecase: chatsl(),
         askQuestionUseCase: chatsl(),
         askFollowUpUseCase: chatsl(),
-        aiResponseUsecase: chatsl(),
         stopStreamUseCase: chatsl(),
+  saveAiMessageUseCase: chatsl(),
       ),
     );
   }

@@ -1,8 +1,7 @@
-
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/errors/faliures.dart';
-import '../entities/message.dart';
+import '../entities/ask_result.dart';
 import '../repository/chat_repository.dart';
 
 class AskQuestionUseCase {
@@ -10,10 +9,7 @@ class AskQuestionUseCase {
 
   AskQuestionUseCase(this.repository);
 
-  Future<Either<Failures, void>> call(
-    String question,
-    String language,
-  ) {
-    return repository.askQuestion(question, language);
+  Future<Either<Failures, AskResult>> call(String question, String language) {
+    return repository.askQuestion(question: question, language: language);
   }
 }

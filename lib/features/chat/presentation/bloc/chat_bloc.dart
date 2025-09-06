@@ -6,10 +6,11 @@ import '../../domain/entities/conversation.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/usecases/ask_follow_up_usecase.dart';
 import '../../domain/usecases/ask_question_usecase.dart';
-import '../../domain/usecases/ai_response_usecase.dart';
+// removed AiResponseUsecase (legacy)
 import '../../domain/usecases/get_chat_history_usecase.dart';
 import '../../domain/usecases/get_chat_message_usecase.dart';
 import '../../domain/usecases/stop_ask_question_stream.dart';
+import '../../domain/usecases/save_ai_message_usecase.dart';
 import '../../../../core/errors/faliures.dart';
 
 part 'chat_event.dart';
@@ -20,18 +21,20 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final GetChatMessageUsecase getChatMessageUsecase;
   final AskQuestionUseCase askQuestionUseCase;
   final AskFollowUpUseCase askFollowUpUseCase;
-  final AiResponseUsecase aiResponseUsecase;
   final StopAskQuestionStreamUseCase stopStreamUseCase;
+  final SaveAiMessageUseCase saveAiMessageUseCase;
 
   StreamSubscription? _streamSub;
+  // Tracks the active conversation id for current user/AI exchange
+  String? _currentConversationId;
 
   ChatBloc({
     required this.getChatHistoryUsecase,
     required this.getChatMessageUsecase,
     required this.askQuestionUseCase,
     required this.askFollowUpUseCase,
-    required this.aiResponseUsecase,
     required this.stopStreamUseCase,
+    required this.saveAiMessageUseCase,
   }) : super(ChatInitial()) {
     print('[ChatBloc] created');
     on<LoadConversations>(_onLoadConversations);
@@ -47,6 +50,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<RetryLastQuestion>(_onRetryLastQuestion);
     on<ResetNewChat>(_onResetNewChat);
     on<SetActiveConversation>(_onSetActiveConversation);
+    // Internal streaming events (new pattern support)
+    on<_StreamResponseChunk>(_onInternalStreamChunk);
+    on<_StreamResponseCompleted>(_onInternalStreamCompleted);
+    on<_StreamResponseError>(_onInternalStreamError);
   }
 
   String? _pendingQuestion;
@@ -128,14 +135,17 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       ),
     );
 
+    // Attempt to initiate question (supporting existing signature). If the
+    // current askQuestionUseCase returns Either<Failure, Unit>, we keep old
+    // flow; if it returns Either<Failure, Stream<String>>, adapt.
     final res = await askQuestionUseCase(event.question, language);
     res.fold(
       (f) {
         print('[ChatBloc] _onSendUserQuestion: failed: ${f.messages}');
+        _pendingQuestion = event.question;
+        _pendingConversationId = null;
+        _pendingIsFollowUp = false;
         if (f is NetworkFailure) {
-          _pendingQuestion = event.question;
-          _pendingConversationId = null;
-          _pendingIsFollowUp = false;
           emit(
             ChatOffline(
               f.messages,
@@ -144,9 +154,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             ),
           );
         } else {
-          _pendingQuestion = event.question;
-          _pendingConversationId = null;
-          _pendingIsFollowUp = false;
           emit(
             ChatError(
               f.messages,
@@ -157,25 +164,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           );
         }
       },
-      (_) {
-        print(
-          '[ChatBloc] _onSendUserQuestion: request accepted, starting stream for "new"',
-        );
-        // clear pending flag
+      (ask) {
+        _currentConversationId = ask.conversationId;
         emit(
           ChatMessages(
             List.unmodifiable(_currentMessages),
             hasPendingUserMessage: false,
             isStreaming: true,
             streamingContent: '',
-            conversationId: null,
+            conversationId: ask.conversationId,
           ),
         );
-        _startStreaming(
-          conversationId: 'new',
-          question: event.question,
-          language: language,
-        );
+        _subscribeToStream(ask.stream, ask.conversationId);
       },
     );
   }
@@ -233,62 +233,91 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           );
         }
       },
-      (_) {
-        print(
-          '[ChatBloc] _onSendFollowUpQuestion: request accepted, starting stream for ${event.conversationId}',
-        );
+      (ask) {
+        print('[ChatBloc] streaming follow-up for ${event.conversationId}');
         emit(
           ChatMessages(
             List.unmodifiable(_currentMessages),
             hasPendingUserMessage: false,
             isStreaming: true,
             streamingContent: '',
-            conversationId: event.conversationId,
+            conversationId: ask.conversationId,
           ),
         );
-        _startStreaming(
-          conversationId: event.conversationId,
-          question: event.question,
-          language: language,
-        );
+        _subscribeToStream(ask.stream, ask.conversationId);
       },
     );
   }
 
-  void _startStreaming({
-    required String conversationId,
-    required String question,
-    required String language,
-  }) {
-    print(
-      '[ChatBloc] _startStreaming: conversationId=$conversationId, question="$question", language=$language',
-    );
-    if (_streamSub != null) {
-      print('[ChatBloc] _startStreaming: cancelling existing subscription');
-      _streamSub?.cancel();
-    }
-    _streamSub = aiResponseUsecase(conversationId, question, language).listen(
-      (either) => either.fold(
-        (f) {
-          print('[ChatBloc] stream error for $conversationId: ${f.messages}');
-          add(StreamResponseError(conversationId, f.messages));
-        },
-        (chunk) {
-          print(
-            '[ChatBloc] stream chunk for $conversationId: ${chunk.toString()}',
-          );
-          add(StreamResponseChunk(conversationId, 'ai-temp', chunk));
-        },
-      ),
-      onDone: () {
-        print('[ChatBloc] stream done for $conversationId');
-        add(StreamResponseCompleted(conversationId, 'ai-temp'));
-      },
-      onError: (e) {
-        print('[ChatBloc] stream onError for $conversationId: $e');
-        add(StreamResponseError(conversationId, e.toString()));
-      },
+  void _subscribeToStream(Stream<String> stream, String conversationId) {
+    _streamSub?.cancel();
+    _streamSub = stream.listen(
+      (chunk) => add(StreamResponseChunk(conversationId, 'ai-temp', chunk)),
+      onError: (e) => add(StreamResponseError(conversationId, e.toString())),
+      onDone: () => add(StreamResponseCompleted(conversationId, 'ai-temp')),
       cancelOnError: false,
+    );
+  }
+
+  // New refactored path when we get a raw Stream<String>
+  // (No-op currently; left placeholder for future direct stream integration)
+
+  // Internal (private) streaming events pattern
+  void _onInternalStreamChunk(
+    _StreamResponseChunk event,
+    Emitter<ChatState> emit,
+  ) {
+    _streamingBuffer += event.chunk;
+    final tempList = [
+      ..._currentMessages,
+      Message(role: 'assistant', content: _streamingBuffer),
+    ];
+    emit(
+      ChatMessages(
+        List.unmodifiable(tempList),
+        isStreaming: true,
+        streamingContent: _streamingBuffer,
+        conversationId: _currentConversationId,
+      ),
+    );
+  }
+
+  void _onInternalStreamCompleted(
+    _StreamResponseCompleted event,
+    Emitter<ChatState> emit,
+  ) {
+    if (_streamingBuffer.isNotEmpty) {
+      final convId = _currentConversationId;
+      _currentMessages = [
+        ..._currentMessages,
+        Message(role: 'assistant', content: _streamingBuffer),
+      ];
+      if (convId != null) {
+        // fire and forget; UI already optimistic
+        saveAiMessageUseCase(conversationId: convId, content: _streamingBuffer);
+      }
+    }
+    _streamingBuffer = '';
+    emit(
+      ChatMessages(
+        List.unmodifiable(_currentMessages),
+        isStreaming: false,
+        conversationId: _currentConversationId,
+      ),
+    );
+    add(LoadConversations());
+  }
+
+  void _onInternalStreamError(
+    _StreamResponseError event,
+    Emitter<ChatState> emit,
+  ) {
+    emit(
+      ChatError(
+        event.error,
+        messages: List.unmodifiable(_currentMessages),
+        canRetry: true,
+      ),
     );
   }
 
@@ -299,6 +328,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     print(
       '[ChatBloc] _onStreamResponseChunk: conversationId=${event.conversationId}, tempId=${event.aiMessageId}, chunk=${event.chunk}',
     );
+    // Defensive: ignore end-of-stream sentinel if it reaches here
+    final trimmed = event.chunk.trim();
+    if (trimmed.toLowerCase() == '[done]') {
+      return;
+    }
     _streamingBuffer += event.chunk;
     final tempList = [
       ..._currentMessages,
@@ -321,10 +355,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       '[ChatBloc] _onStreamResponseCompleted: conversationId=${event.conversationId}, tempId=${event.aiMessageId}',
     );
     if (_streamingBuffer.isNotEmpty) {
+      final convId = event.conversationId == 'new'
+          ? _currentConversationId
+          : event.conversationId;
       _currentMessages = [
         ..._currentMessages,
         Message(role: 'assistant', content: _streamingBuffer),
       ];
+      if (convId != null) {
+        saveAiMessageUseCase(conversationId: convId, content: _streamingBuffer);
+      }
     }
     _streamingBuffer = '';
     emit(
@@ -453,4 +493,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     _streamSub?.cancel();
     return super.close();
   }
+}
+
+// Private internal streaming events (new pattern)
+class _StreamResponseChunk extends ChatEvent {
+  final String chunk;
+  const _StreamResponseChunk(this.chunk);
+  @override
+  List<Object?> get props => [chunk];
+}
+
+class _StreamResponseCompleted extends ChatEvent {
+  const _StreamResponseCompleted();
+}
+
+class _StreamResponseError extends ChatEvent {
+  final String error;
+  const _StreamResponseError(this.error);
+  @override
+  List<Object?> get props => [error];
 }

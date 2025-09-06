@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/chat_bloc.dart';
 import '../widgets/chat_drawer.dart';
+import '../../../onboarding_auth/presentation/bloc/auth_bloc.dart';
+import '../../../onboarding_auth/presentation/bloc/auth_state.dart';
 import '../widgets/suggestion_panel.dart';
 import '../widgets/message_input.dart';
 import '../../domain/entities/message.dart';
@@ -128,6 +131,37 @@ class _ChatPageState extends State<ChatPage> {
             onPressed: () => Scaffold.of(ctx).openDrawer(),
           ),
         ),
+        actions: [
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              if (authState is Unauthenticated) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Navigate to sign up page (replace with your route)
+                      Navigator.of(context).pushNamed('/signup');
+                    },
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: const Text('Sign Up'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(15.0, 0, 15.0, 0),
@@ -147,6 +181,11 @@ class _ChatPageState extends State<ChatPage> {
                       // If we have messages, show them.
                       if (state is ChatMessages) {
                         final messages = state.messages;
+                        final bool showTyping =
+                            state.hasPendingUserMessage ||
+                            (state.isStreaming &&
+                                ((state.streamingContent ?? '').isEmpty));
+
                         if (messages.isEmpty && state.conversationId == null) {
                           // Fall back to suggestions when the conversation has no messages yet.
                           return SuggestionPanel(
@@ -159,61 +198,91 @@ class _ChatPageState extends State<ChatPage> {
                                       offset: _textController.text.length,
                                     ),
                                   );
-                              setState(
-                                () {},
-                              ); // rebuild to keep panel until send
+                              setState(() {}); // keep panel until send
                             },
                           );
                         }
+
                         return ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(
                             vertical: 12,
                             horizontal: 12,
                           ),
-                          itemCount: messages.length,
+                          itemCount: messages.length + (showTyping ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final m = messages[index];
-                            final isUser = m.role == 'user';
+                            if (index < messages.length) {
+                              final m = messages[index];
+                              final isUser = m.role == 'user';
+                              return Align(
+                                alignment: isUser
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 5,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                          horizontal: 16,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isUser
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.surfaceVariant,
+                                          borderRadius: BorderRadius.circular(
+                                            22,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          m.content,
+                                          style: TextStyle(
+                                            color: isUser
+                                                ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.onPrimary
+                                                : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                            fontSize: 16,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                      if (!isUser) ...[
+                                        const SizedBox(height: 4),
+                                        _AiDisclaimer(),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            // Extra item: typing shimmer before first chunk
                             return Align(
-                              alignment: isUser
-                                  ? Alignment.centerRight
-                                  : Alignment.centerLeft,
+                              alignment: Alignment.centerLeft,
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
                                   maxWidth:
                                       MediaQuery.of(context).size.width * 0.75,
                                 ),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 5,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                    horizontal: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isUser
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.surfaceVariant,
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                  child: Text(
-                                    m.content,
-                                    style: TextStyle(
-                                      color: isUser
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                      fontSize: 16,
-                                      height: 1.4,
-                                    ),
-                                  ),
+                                child: const _ShimmerBubble(
+                                  height: 22,
+                                  widthFactor: 0.6,
                                 ),
                               ),
                             );
@@ -288,44 +357,44 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                   // Streaming indicator
-                  Positioned(
-                    bottom: 16,
-                    left: 8,
-                    child: BlocBuilder<ChatBloc, ChatState>(
-                      buildWhen: (p, c) => c is ChatMessages,
-                      builder: (context, state) {
-                        if (state is ChatMessages && state.isStreaming) {
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _TypingIndicator(),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.errorContainer,
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onErrorContainer,
-                                ),
-                                onPressed: () => context.read<ChatBloc>().add(
-                                  CancelStreaming('current'),
-                                ),
-                                icon: const Icon(Icons.stop),
-                                label: const Text('Stop'),
-                              ),
-                            ],
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  ),
+                  // Positioned(
+                  //   bottom: 16,
+                  //   left: 8,
+                  //   child: BlocBuilder<ChatBloc, ChatState>(
+                  //     buildWhen: (p, c) => c is ChatMessages,
+                  //     builder: (context, state) {
+                  //       if (state is ChatMessages && state.isStreaming) {
+                  //         return Row(
+                  //           mainAxisSize: MainAxisSize.min,
+                  //           children: [
+                  //             state.isStreaming ? _TypingIndicator() ,
+                  //             const SizedBox(width: 8),
+                  //             ElevatedButton.icon(
+                  //               style: ElevatedButton.styleFrom(
+                  //                 padding: const EdgeInsets.symmetric(
+                  //                   horizontal: 12,
+                  //                   vertical: 8,
+                  //                 ),
+                  //                 backgroundColor: Theme.of(
+                  //                   context,
+                  //                 ).colorScheme.errorContainer,
+                  //                 foregroundColor: Theme.of(
+                  //                   context,
+                  //                 ).colorScheme.onErrorContainer,
+                  //               ),
+                  //               onPressed: () => context.read<ChatBloc>().add(
+                  //                 CancelStreaming('current'),
+                  //               ),
+                  //               icon: const Icon(Icons.stop),
+                  //               label: const Text('Stop'),
+                  //             ),
+                  //           ],
+                  //         );
+                  //       }
+                  //       return const SizedBox.shrink();
+                  //     },
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -356,28 +425,37 @@ class _ChatPageState extends State<ChatPage> {
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.75,
                 ),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 5),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isUser
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surfaceVariant,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Text(
-                    m.content,
-                    style: TextStyle(
-                      color: isUser
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 16,
-                      height: 1.4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isUser
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Text(
+                        m.content,
+                        style: TextStyle(
+                          color: isUser
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 16,
+                          height: 1.4,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (!isUser) ...[
+                      const SizedBox(height: 4),
+                      _AiDisclaimer(),
+                    ],
+                  ],
                 ),
               ),
             );
@@ -417,6 +495,56 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _AiDisclaimer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final baseStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+      height: 1.3,
+    );
+    final linkStyle = baseStyle?.copyWith(
+      color: theme.colorScheme.primary,
+      decoration: TextDecoration.underline,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 2.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 14, color: theme.colorScheme.outline),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text:
+                        'Not legal advice. For educational purposes only. For legal assistance, see ',
+                    style: baseStyle,
+                  ),
+                  TextSpan(
+                    text: 'Legal Aid Directories',
+                    style: linkStyle,
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        Navigator.of(
+                          context,
+                        ).pushNamed('/legal-aid-directories');
+                      },
+                  ),
+                  TextSpan(text: '.', style: baseStyle),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -469,6 +597,106 @@ class _TypingIndicatorState extends State<_TypingIndicator>
         ),
       ),
     );
+  }
+}
+
+// Simple shimmer bubble (no external package)
+class _ShimmerBubble extends StatefulWidget {
+  final double height;
+  final double widthFactor; // 0..1 relative max width
+  const _ShimmerBubble({required this.height, this.widthFactor = 0.6});
+
+  @override
+  State<_ShimmerBubble> createState() => _ShimmerBubbleState();
+}
+
+class _ShimmerBubbleState extends State<_ShimmerBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final base = theme.colorScheme.surfaceVariant;
+    final onBase = theme.colorScheme.onSurfaceVariant;
+    final width = MediaQuery.of(context).size.width * 0.75 * widget.widthFactor;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        // shimmer sweep from -0.5..1.5 across width
+        final t = _c.value; // 0..1
+        final sweepCenter = (t * 2.0) - 0.5;
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: base,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: SizedBox(
+            height: widget.height,
+            width: width,
+            child: CustomPaint(
+              painter: _ShimmerPainter(
+                base: base,
+                highlight: onBase.withOpacity(0.12),
+                sweepCenter: sweepCenter,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ShimmerPainter extends CustomPainter {
+  final Color base;
+  final Color highlight;
+  final double sweepCenter; // -0.5..1.5
+  _ShimmerPainter({
+    required this.base,
+    required this.highlight,
+    required this.sweepCenter,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [base, highlight, base],
+        stops: [
+          (sweepCenter - 0.2).clamp(0.0, 1.0),
+          sweepCenter.clamp(0.0, 1.0),
+          (sweepCenter + 0.2).clamp(0.0, 1.0),
+        ],
+      ).createShader(rect);
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShimmerPainter oldDelegate) {
+    return oldDelegate.sweepCenter != sweepCenter ||
+        oldDelegate.base != base ||
+        oldDelegate.highlight != highlight;
   }
 }
 
