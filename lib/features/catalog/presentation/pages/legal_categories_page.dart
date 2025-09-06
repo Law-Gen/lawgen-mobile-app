@@ -66,7 +66,7 @@ class _LegalCategoriesPageState extends State<LegalCategoriesPage> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: kPrimaryTextColor),
-          onPressed: () => context.pop(),
+          onPressed: () => context.push('/legal-aid'),
         ),
       ),
       body: Column(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../features/LegalAidDirectory/injection_container.dart';
 import '../features/catalog/catalog_injection.dart';
 import '../features/quize/quiz_injection.dart';
 import 'router.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   // Feature DI setup
   await setupChatFeatureDependencies();
   await di.init();
+  await initLegalAid();
   await initQuiz();
   await initCatalog();
 

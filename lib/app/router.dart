@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/LegalAidDirectory/presentation/pages/legal_aid_directory_page.dart';
 import '../features/onboarding_auth/presentation/pages/forget_password_page.dart';
 import '../features/onboarding_auth/presentation/pages/onboarding_page.dart';
 import '../features/onboarding_auth/presentation/pages/otp_page.dart';
@@ -238,8 +239,7 @@ class AppRouter {
       // --- Standalone Routes (Without Bottom Navigation) ---
       GoRoute(
         path: '/legal-aid',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Legal Aid Directory'),
+        builder: (context, state) => LegalAidDirectoryPage.withBloc(),
       ),
       GoRoute(
         path: '/subscriptions',

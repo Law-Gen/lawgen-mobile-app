@@ -1,4 +1,4 @@
-import 'dart:convert';     // Often useful for debug printing
+import 'dart:convert'; // Often useful for debug printing
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/errors/exception.dart';
@@ -23,7 +23,7 @@ abstract class LegalDocumentRemoteDataSource {
 // =======================================================================
 
 const String _baseUrl =
-    'https://your-api.com/api/v1';
+    'https://lawgen-backend-1.onrender.com/api/v1/legal-entities';
 const String CACHED_AUTH_TOKEN = 'ACCESS_TOKEN';
 
 class LegalDocumentRemoteDataSourceImpl
@@ -38,6 +38,7 @@ class LegalDocumentRemoteDataSourceImpl
 
   Future<Map<String, String>> get _headers async {
     final token = await secureStorage.read(key: CACHED_AUTH_TOKEN);
+    final token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjI1LCJnZW5kZXIiOiJtYWxlIiwiZXhwIjoxNzU3MTUyMDAxLCJpYXQiOjE3NTcxNTExMDF9.tLhEOoaVkeoUvGE1pZqIsF0YUNZbGOWS7q4ke_GXhK4";
     if (token != null) {
       return {
         'Content-Type': 'application/json',
