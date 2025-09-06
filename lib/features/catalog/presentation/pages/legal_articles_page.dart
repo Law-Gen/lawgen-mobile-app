@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../domain/entities/legal_document.dart';
 import '../../catalog_injection.dart'; // Make sure this path is correct
+import '../../domain/entities/legal_document.dart';
 import '../bloc/legal_content_bloc.dart';
 import 'legal_categories_page.dart'; // For color constants and the TagChip widget
 
@@ -254,13 +254,23 @@ class _ArticleCard extends StatelessWidget {
                 onPressed: () => _launchURL(context, article.url),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kButtonColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  minimumSize: const Size(50, 50), // width, height
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8), // smoother corners
+                  ),
+                  elevation: 3, // subtle shadow
                 ),
                 child: const Text(
                   'Read Article',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14, // increased font size
+                    fontWeight: FontWeight.w600, // slightly bolder
+                  ),
                 ),
               ),
             ),

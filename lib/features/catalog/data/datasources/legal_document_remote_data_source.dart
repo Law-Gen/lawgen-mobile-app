@@ -1,13 +1,12 @@
-import 'dart:convert'; // Often useful for debug printing
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// lib/data/datasources/legal_document_remote_data_source.dart
 
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/errors/exception.dart';
-import '../models/legal_group_model.dart';
 import '../models/legal_content_model.dart';
 import '../models/paginated_legal_documents_model.dart';
 
-/// The contract for the remote data source.
 abstract class LegalDocumentRemoteDataSource {
   Future<PaginatedLegalGroupsModel> getLegalDocuments({
     required int page,
@@ -18,10 +17,6 @@ abstract class LegalDocumentRemoteDataSource {
     required String id,
   });
 }
-
-// =======================================================================
-// ORIGINAL API-CALLING IMPLEMENTATION
-// =======================================================================
 
 const String _baseUrl = 'https://lawgen-backend-1.onrender.com/api/v1/contents';
 const String CACHED_AUTH_TOKEN = 'ACCESS_TOKEN';
@@ -71,12 +66,15 @@ class LegalDocumentRemoteDataSourceImpl
     required String id,
   }) async {
     final response = await client.get(
-      Uri.parse('$_baseUrl/$id'),
+      Uri.parse('$_baseUrl/group/68bb23a4f47e399eebade021'),
       headers: await _headers,
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
+      // CHANGED: The response is a Map, not a List.
+      // We need to decode the map and then extract the list from the 'contents' key.
+      final Map<String, dynamic> jsonMap = json.decode(response.body);
+      final List<dynamic> jsonList = jsonMap['contents'];
       return jsonList
           .map((jsonItem) => LegalContentModel.fromJson(jsonItem))
           .toList();

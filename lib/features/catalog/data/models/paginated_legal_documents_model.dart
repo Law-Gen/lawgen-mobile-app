@@ -1,3 +1,5 @@
+// lib/data/models/paginated_legal_groups_model.dart
+
 import '../../domain/entities/paginated_legal_documents.dart';
 import 'legal_group_model.dart';
 
@@ -12,7 +14,8 @@ class PaginatedLegalGroupsModel extends PaginatedLegalGroups {
 
   factory PaginatedLegalGroupsModel.fromJson(Map<String, dynamic> json) {
     return PaginatedLegalGroupsModel(
-      items: (json['items'] as List)
+      // CHANGED: 'items' is now 'group' to match the API response
+      items: (json['group'] as List)
           .map((item) => LegalGroupModel.fromJson(item as Map<String, dynamic>))
           .toList(),
       totalItems: json['total_items'] as int,
@@ -24,7 +27,8 @@ class PaginatedLegalGroupsModel extends PaginatedLegalGroups {
 
   Map<String, dynamic> toJson() {
     return {
-      'items': (items as List<LegalGroupModel>)
+      // It's good practice to also align the key here for consistency
+      'group': (items as List<LegalGroupModel>)
           .map((item) => item.toJson())
           .toList(),
       'total_items': totalItems,
