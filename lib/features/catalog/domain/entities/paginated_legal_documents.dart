@@ -1,14 +1,14 @@
 import 'package:equatable/equatable.dart';
-import 'legal_document.dart';
+import 'legal_group.dart';
 
-class PaginatedLegalDocuments extends Equatable {
-  final List<LegalDocument> items;
+class PaginatedLegalGroups extends Equatable {
+  final List<LegalGroup> items;
   final int totalItems;
   final int totalPages;
   final int currentPage;
   final int pageSize;
 
-  const PaginatedLegalDocuments({
+  const PaginatedLegalGroups({
     required this.items,
     required this.totalItems,
     required this.totalPages,

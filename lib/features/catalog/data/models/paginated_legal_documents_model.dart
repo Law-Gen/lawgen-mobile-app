@@ -1,8 +1,8 @@
 import '../../domain/entities/paginated_legal_documents.dart';
-import 'legal_document_model.dart';
+import 'legal_group_model.dart';
 
-class PaginatedLegalDocumentsModel extends PaginatedLegalDocuments {
-  const PaginatedLegalDocumentsModel({
+class PaginatedLegalGroupsModel extends PaginatedLegalGroups {
+  const PaginatedLegalGroupsModel({
     required super.items,
     required super.totalItems,
     required super.totalPages,
@@ -10,12 +10,10 @@ class PaginatedLegalDocumentsModel extends PaginatedLegalDocuments {
     required super.pageSize,
   });
 
-  factory PaginatedLegalDocumentsModel.fromJson(Map<String, dynamic> json) {
-    return PaginatedLegalDocumentsModel(
+  factory PaginatedLegalGroupsModel.fromJson(Map<String, dynamic> json) {
+    return PaginatedLegalGroupsModel(
       items: (json['items'] as List)
-          .map(
-            (item) => LegalDocumentModel.fromJson(item as Map<String, dynamic>),
-          )
+          .map((item) => LegalGroupModel.fromJson(item as Map<String, dynamic>))
           .toList(),
       totalItems: json['total_items'] as int,
       totalPages: json['total_pages'] as int,
@@ -26,7 +24,7 @@ class PaginatedLegalDocumentsModel extends PaginatedLegalDocuments {
 
   Map<String, dynamic> toJson() {
     return {
-      'items': (items as List<LegalDocumentModel>)
+      'items': (items as List<LegalGroupModel>)
           .map((item) => item.toJson())
           .toList(),
       'total_items': totalItems,
@@ -36,11 +34,9 @@ class PaginatedLegalDocumentsModel extends PaginatedLegalDocuments {
     };
   }
 
-  PaginatedLegalDocuments toEntity() {
-    return PaginatedLegalDocuments(
-      items: items
-          .map((item) => (item as LegalDocumentModel).toEntity())
-          .toList(),
+  PaginatedLegalGroups toEntity() {
+    return PaginatedLegalGroups(
+      items: items.map((item) => (item as LegalGroupModel).toEntity()).toList(),
       totalItems: totalItems,
       totalPages: totalPages,
       currentPage: currentPage,
