@@ -48,18 +48,18 @@ Future<void> initCatalog() async {
   );
 
   //! Data sources
-  // catalogSL.registerLazySingleton<LegalDocumentRemoteDataSource>(
-  //   () => LegalDocumentRemoteDataSourceImpl(
-  //     // <--- THIS IS THE REAL ONE
-  //     client: catalogSL(),
-  //     secureStorage: catalogSL(),
-  //   ),
-  // );
-
   catalogSL.registerLazySingleton<LegalDocumentRemoteDataSource>(
-    // Use the dummy implementation for testing
-    () => DummyLegalDocumentRemoteDataSourceImpl(),
+    () => LegalDocumentRemoteDataSourceImpl(
+      // <--- THIS IS THE REAL ONE
+      client: catalogSL(),
+      secureStorage: catalogSL(),
+    ),
   );
+
+  // catalogSL.registerLazySingleton<LegalDocumentRemoteDataSource>(
+  //   // Use the dummy implementation for testing
+  //   () => DummyLegalDocumentRemoteDataSourceImpl(),
+  // );
 
   //================================================
   // Core
@@ -75,5 +75,4 @@ Future<void> initCatalog() async {
   // catalogSL.registerLazySingleton(
   //   () => InternetConnectionChecker.createInstance(),
   // );
- 
 }
