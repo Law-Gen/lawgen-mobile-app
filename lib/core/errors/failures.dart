@@ -1,12 +1,12 @@
-// core/errors/failures.dart
-abstract class Failures extends Error {
-  final List properties;
-  Failures([this.properties = const <dynamic>[]]);
+abstract class Failures {
+  final String message;
+  Failures({this.message = "something went wrong"});
 }
 
-// Example concrete failures
-class ServerFailure extends Failures {}
+class ServerFailure extends Failures {
+  ServerFailure({super.message});
+}
 
-class CacheFailure extends Failures {}
-
-class NetworkFailure extends Failures {}
+class CacheFailure extends Failures {
+  CacheFailure({super.message});
+}

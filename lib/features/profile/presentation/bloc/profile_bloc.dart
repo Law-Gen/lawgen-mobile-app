@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../domain/usecases/edit_profile_usecase.dart';
 import '../../domain/usecases/get_profile_usecases.dart';
 import 'profile_event.dart';
@@ -10,7 +9,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final UpdateProfileUseCase updateProfile;
 
   ProfileBloc({required this.getProfile, required this.updateProfile})
-    : super(ProfileInitial()) {
+      : super(ProfileInitial()) {
     on<LoadProfile>(_onLoadProfile);
     on<SaveProfile>(_onSaveProfile);
   }
@@ -20,13 +19,15 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     Emitter<ProfileState> emit,
   ) async {
     emit(ProfileLoading());
-    try {
-
-      final profile = await getProfile();
-      emit(ProfileLoaded(profile));
-    } catch (e) {
-      emit(ProfileError("Failed to load profile: $e"));
-    }
+    final result = await getProfile();
+    result.fold(
+      (failure) {
+        emit(ProfileError(failure.message));
+      },
+      (profile) {
+        emit(ProfileLoaded(profile));
+      },
+    );
   }
 
   Future<void> _onSaveProfile(
@@ -34,11 +35,15 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     Emitter<ProfileState> emit,
   ) async {
     emit(ProfileLoading());
-    try {
-      final updated = await updateProfile(event.profile);
-      emit(ProfileLoaded(updated));
-    } catch (e) {
-      emit(ProfileError("Failed to update profile: $e"));
-    }
+    
+    final result = await updateProfile(event.profile, event.imageFile);
+    result.fold(
+      (failure) {
+        emit(ProfileError(failure.message));
+      },
+      (updatedProfile) {
+        emit(ProfileLoaded(updatedProfile));
+      },
+    );
   }
 }

@@ -11,9 +11,6 @@ import '../features/onboarding_auth/presentation/pages/success_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-
-
 import '../features/catalog/presentation/pages/legal_articles_page.dart';
 import '../features/catalog/presentation/pages/legal_categories_page.dart';
 import '../features/quize/domain/entities/quize.dart';
@@ -152,7 +149,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/otppage',
-        builder: (context, state) => const OtpPage(email: 'email'),
+        builder: (context, state) {
+          final email = state.extra as String?;
+          return OtpPage(email: email ?? 'Error: No email provided');
+        },
       ),
       GoRoute(
         path: '/successreset',
@@ -168,7 +168,7 @@ class AppRouter {
       // --- Guest/Anonymous Routes ---
       GoRoute(
         path: '/',
-        // how can i tell the chatpage that the user is not logged in yet 
+        // how can i tell the chatpage that the user is not logged in yet
         builder: (context, state) => ChatPage(),
       ),
 
@@ -239,13 +239,11 @@ class AppRouter {
       GoRoute(
         path: '/legal-aid',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Legal Aid Directory'),
       ),
       GoRoute(
         path: '/subscriptions',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Subscription Plans'),
       ),
 
@@ -253,25 +251,21 @@ class AppRouter {
       GoRoute(
         path: '/admin/dashboard',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Dashboard'),
       ),
       GoRoute(
         path: '/admin/users',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin User Management'),
       ),
       GoRoute(
         path: '/admin/quizzes',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Quizzes'),
       ),
       GoRoute(
         path: '/admin/content',
         builder: (context, state) =>
-           
             const PlaceholderScreen(title: 'Admin Content Management'),
       ),
     ],
@@ -285,7 +279,7 @@ class AppRouter {
 
       // If the user hasn't seen onboarding, redirect them there first.
       final isOnboarding = state.uri.toString() == '/onboarding';
-      if (!hasSeenOnboarding.value && !isOnboarding) {
+      if (!hasSeenOnboarding.value && !isOnboarding && !isLoggingIn) {
         return '/onboarding';
       }
       if (hasSeenOnboarding.value && isOnboarding) {
@@ -294,11 +288,10 @@ class AppRouter {
 
       // If the user is not authenticated and is trying to access a protected route,
       // redirect them to the sign-in page.
-      final isProtected =
-          state.uri.toString().startsWith('/chat') ||
-          state.uri.toString().startsWith('/profile') ||
-          state.uri.toString().startsWith('/admin');
-   
+      // final isProtected =
+      //     state.uri.toString().startsWith('/chat') ||
+      //     state.uri.toString().startsWith('/profile') ||
+      //     state.uri.toString().startsWith('/admin');
 
       // if (!isAuthenticated && isProtected) {
       //   return '/signin';
@@ -316,7 +309,6 @@ class AppRouter {
 
     // --- Error Handling ---
     errorBuilder: (context, state) =>
-       
         const PlaceholderScreen(title: '404 - Page Not Found'),
   );
 }

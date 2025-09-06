@@ -5,17 +5,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
+import 'package:lawgen/app/dependency_injection.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
 
 import '../../domain/entities/profile.dart';
-import '../../domain/repositories/profile_repository.dart';
-import '../../domain/usecases/edit_profile_usecase.dart';
-import '../../domain/usecases/get_profile_usecases.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
-import '../../data/datasources/profile_remote_datasource.dart';
-import '../../data/repositories/profile_repositoryimpl.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -25,24 +22,9 @@ class ProfilePage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<ProfileBloc>(
-  create: (_) {
-
-    final remoteDataSource = ProfileRemoteDataSourceImpl(client: http.Client());
-
-    final repository = ProfileRepositoryImpl(remoteDataSource: remoteDataSource);
-
-    final getProfileUseCase = GetProfileUseCase(repository);
-    final updateProfileUseCase = UpdateProfileUseCase(repository);
-
-    // Provide the Bloc
-    return ProfileBloc(
-      getProfile: getProfileUseCase,
-      updateProfile: updateProfileUseCase,
-    )..add(LoadProfile());
-  },
-),
-
-        // Add other Blocs here if needed
+          create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
+        ),
+        BlocProvider.value(value: sl<AuthBloc>()),
       ],
       child: const ProfileView(),
     );
@@ -57,32 +39,23 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController fullNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController genderController = TextEditingController();
   final TextEditingController birthDateController = TextEditingController();
 
+  // State variables for dropdowns
+  String? _selectedGender;
+  String? _selectedLanguage;
+
   bool _isEditing = false;
-  File? _profileImage;
-  String _firstName = "";
-  String? _uploadedProfileUrl;
-  Profile? _currentProfile;
+  File? _pickedImageFile;
 
-  Future<void> _selectBirthDate(BuildContext context) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2000),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
-    }
-  }
-
-  void _toggleEdit() {
-    setState(() => _isEditing = !_isEditing);
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    birthDateController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickProfileImage() async {
@@ -91,67 +64,294 @@ class _ProfileViewState extends State<ProfileView> {
       source: ImageSource.gallery,
       imageQuality: 80,
     );
-
     if (pickedFile != null) {
-      setState(() => _profileImage = File(pickedFile.path));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile picture selected")),
-      );
-
-      try {
-        _uploadedProfileUrl = await _uploadProfilePicture(_profileImage!);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Profile picture uploaded successfully")),
-        );
-      } catch (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to upload profile picture")),
-        );
-      }
+      setState(() {
+        _pickedImageFile = File(pickedFile.path);
+      });
     }
   }
 
-  Future<String> _uploadProfilePicture(File file) async {
-    final request = http.MultipartRequest(
-      "POST",
-      Uri.parse("https://your-backend.com/users/upload-profile-picture"),
-    );
-    request.files.add(await http.MultipartFile.fromPath("file", file.path));
+  void _saveChanges(Profile currentProfile) {
+    // Map the display values back to the codes the backend expects
+    String? genderCode;
+    if (_selectedGender == 'Male') genderCode = 'M';
+    if (_selectedGender == 'Female') genderCode = 'F';
 
-    final response = await request.send();
-    if (response.statusCode == 200) {
-      final respStr = await response.stream.bytesToString();
-      return respStr;
-    } else {
-      throw Exception("Failed to upload image");
-    }
-  }
-
-  void _saveChanges() {
-    if (_currentProfile == null) return;
+    String? langCode;
+    if (_selectedLanguage == 'English') langCode = 'En';
+    if (_selectedLanguage == 'Amharic') langCode = 'Am';
 
     final updatedProfile = Profile(
-      id: _currentProfile!.id,
-      firstName: firstNameController.text,
-      lastName: lastNameController.text,
-      email: emailController.text,
-      gender: genderController.text,
+      id: currentProfile.id,
+      full_name: fullNameController.text,
+      email: currentProfile.email,
+      gender: genderCode,
       birthDate: birthDateController.text,
-      profilePictureUrl: _uploadedProfileUrl ?? _currentProfile!.profilePictureUrl ?? "",
+      languagePreference: langCode,
+      profilePictureUrl: currentProfile.profilePictureUrl,
     );
-
-    context.read<ProfileBloc>().add(SaveProfile(updatedProfile));
-
+    context.read<ProfileBloc>().add(
+      SaveProfile(updatedProfile, _pickedImageFile),
+    );
     setState(() => _isEditing = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profile updated successfully")),
+  }
+
+  void _logout() {
+    context.go('/signin');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: BlocConsumer<ProfileBloc, ProfileState>(
+        listener: (context, state) {
+          if (state is ProfileLoaded && state is! ProfileUpdating) {
+            if (_isEditing) {
+              setState(() {
+                _isEditing = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Profile updated successfully!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+            final profile = state.profile;
+            fullNameController.text = profile.full_name;
+            emailController.text = profile.email;
+            birthDateController.text = profile.birthDate ?? '';
+            setState(() {
+              _pickedImageFile = null;
+              // Map codes from the server to display values for the UI
+              if (profile.gender == 'F') _selectedGender = 'Female';
+              if (profile.gender == 'M') _selectedGender = 'Male';
+
+              if (profile.languagePreference == 'En')
+                _selectedLanguage = 'English';
+              if (profile.languagePreference == 'Am')
+                _selectedLanguage = 'Amharic';
+            });
+          } else if (state is ProfileError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is! ProfileLoaded) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final profile = state.profile;
+          final isSaving = state is ProfileUpdating;
+
+          return SafeArea(
+            child: Column(
+              children: [
+                // Top Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/chat'),
+                      ),
+                      SvgPicture.asset('assets/logo/logo.svg', height: 32),
+                    ],
+                  ),
+                ),
+                // Profile Picture
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage: _pickedImageFile != null
+                          ? FileImage(_pickedImageFile!)
+                          : (profile.profilePictureUrl != null &&
+                                    profile.profilePictureUrl!.isNotEmpty
+                                ? NetworkImage(profile.profilePictureUrl!)
+                                : const AssetImage(
+                                        "assets/images/profile_placeholder.png",
+                                      )
+                                      as ImageProvider),
+                    ),
+                    if (_isEditing)
+                      GestureDetector(
+                        onTap: _pickProfileImage,
+                        child: const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Color(0xFF0A1D37),
+                          child: Icon(
+                            Icons.edit,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  profile.full_name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Form Fields
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      _profileItem(
+                        label: "Full Name",
+                        controller: fullNameController,
+                        icon: Icons.person_outline,
+                      ),
+                      _profileItem(
+                        label: "Email",
+                        controller: emailController,
+                        icon: Icons.email_outlined,
+                        editable: false,
+                      ),
+                      _genderDropdown(),
+                      _profileItem(
+                        label: "Birthdate",
+                        controller: birthDateController,
+                        icon: Icons.calendar_today_outlined,
+                        onTap: _isEditing
+                            ? () => _selectBirthDate(context)
+                            : null,
+                      ),
+                      _languageDropdown(),
+                    ],
+                  ),
+                ),
+                // Buttons
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: isSaving
+                              ? null
+                              : (_isEditing
+                                    ? () => _saveChanges(profile)
+                                    : () => setState(() => _isEditing = true)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A1D37),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: isSaving
+                              ? Container(
+                                  width: 24,
+                                  height: 24,
+                                  padding: const EdgeInsets.all(2.0),
+                                  child: const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : Icon(
+                                  _isEditing
+                                      ? Icons.save_alt_outlined
+                                      : Icons.edit_outlined,
+                                ),
+                          label: Text(
+                            _isEditing ? "Save Changes" : "Edit Profile",
+                          ),
+                        ),
+                      ),
+                      if (_isEditing) ...[
+                        const SizedBox(width: 10),
+                        IconButton(
+                          onPressed: () {
+                            context.read<ProfileBloc>().add(LoadProfile());
+                            setState(() => _isEditing = false);
+                          },
+                          icon: const Icon(Icons.cancel_outlined),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => context.go('/subscription'),
+                        icon: const Icon(
+                          Icons.workspace_premium_outlined,
+                          color: Colors.amber,
+                        ),
+                        label: const Text(
+                          "Premium",
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout, color: Colors.redAccent),
+                        label: const Text(
+                          "Logout",
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  void _navigateToSubscription() => context.go('/subscription');
-  void _navigateToChat() => context.go('/chat');
-  void _logout() => context.go('/signin');
+  // --- HELPER METHODS ---
+
+  Future<void> _selectBirthDate(BuildContext context) async {
+    DateTime initialDate =
+        DateTime.tryParse(birthDateController.text) ?? DateTime(2000);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) => Theme(
+        data: ThemeData.light().copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFF0A1D37)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+    }
+  }
 
   Widget _profileItem({
     required String label,
@@ -161,7 +361,7 @@ class _ProfileViewState extends State<ProfileView> {
     VoidCallback? onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         enabled: _isEditing && editable,
@@ -174,12 +374,10 @@ class _ProfileViewState extends State<ProfileView> {
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: Color(0xFF6C757D),
-          ),
-          fillColor: const Color(0xFFF5F7FA),
+          labelStyle: const TextStyle(color: Colors.white),
+          fillColor: _isEditing && editable
+              ? Colors.white
+              : Colors.grey.shade100,
           filled: true,
           prefixIcon: Icon(icon, color: const Color(0xFF0A1D37)),
           contentPadding: const EdgeInsets.symmetric(
@@ -188,164 +386,94 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD8DADC)),
+            borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFD8DADC)),
+            borderSide: BorderSide(color: Colors.grey.shade300),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color(0xFF0A1D37), width: 2),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<ProfileBloc, ProfileState>(
-      listener: (context, state) {
-        if (state is ProfileLoaded) {
-          _currentProfile = state.profile;
+  Widget _genderDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: _selectedGender,
+        items: ['Male', 'Female']
+            .map(
+              (String value) =>
+                  DropdownMenuItem<String>(value: value, child: Text(value)),
+            )
+            .toList(),
+        onChanged: _isEditing
+            ? (String? newValue) => setState(() => _selectedGender = newValue)
+            : null,
+        decoration: InputDecoration(
+          labelText: 'Gender',
+          prefixIcon: const Icon(Icons.wc_outlined, color: Color(0xFF0A1D37)),
+          fillColor: _isEditing ? Colors.white : Colors.grey.shade100,
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+        ),
+      ),
+    );
+  }
 
-          firstNameController.text = state.profile.firstName;
-          lastNameController.text = state.profile.lastName;
-          emailController.text = state.profile.email;
-          genderController.text = state.profile.gender;
-          birthDateController.text = state.profile.birthDate;
-          _firstName = state.profile.firstName;
-
-          if (state.profile.profilePictureUrl != null &&
-              state.profile.profilePictureUrl!.isNotEmpty) {
-            _profileImage = null;
-            _uploadedProfileUrl = state.profile.profilePictureUrl;
-          }
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(icon: const Icon(Icons.arrow_back), onPressed: _navigateToChat),
-                    SvgPicture.asset('assets/logo/logo.svg', height: 32, width: 32),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Profile picture
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: _profileImage != null
-                        ? FileImage(_profileImage!)
-                        : (_uploadedProfileUrl != null
-                            ? NetworkImage(_uploadedProfileUrl!)
-                            : const AssetImage("assets/images/profile_placeholder.png") as ImageProvider),
-                  ),
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: _pickProfileImage,
-                      child: const CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.blueAccent,
-                        child: Icon(Icons.edit, size: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Hello, $_firstName",
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView(
-                  children: [
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: _profileItem(label: "First Name", controller: firstNameController, icon: Icons.person),
-                    ),
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: _profileItem(label: "Last Name", controller: lastNameController, icon: Icons.person_outline),
-                    ),
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: _profileItem(label: "Email", controller: emailController, icon: Icons.email, editable: false),
-                    ),
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: _profileItem(label: "Gender", controller: genderController, icon: Icons.wc_outlined),
-                    ),
-                    Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: _profileItem(
-                        label: "Birthdate",
-                        controller: birthDateController,
-                        icon: Icons.calendar_today,
-                        editable: true,
-                        onTap: _isEditing ? () => _selectBirthDate(context) : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Buttons
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isEditing ? _saveChanges : _toggleEdit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A1D37),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: Icon(_isEditing ? Icons.save : Icons.edit),
-                        label: Text(_isEditing ? "Save" : "Edit", style: const TextStyle(fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Bottom row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton.icon(
-                      onPressed: _navigateToSubscription,
-                      icon: const Icon(Icons.workspace_premium, color: Colors.blue),
-                      label: const Text("Premium", style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _logout,
-                      icon: const Icon(Icons.logout, color: Colors.blue),
-                      label: const Text("Logout", style: TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+  Widget _languageDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        value: _selectedLanguage,
+        items: ['English', 'Amharic']
+            .map(
+              (String value) =>
+                  DropdownMenuItem<String>(value: value, child: Text(value)),
+            )
+            .toList(),
+        onChanged: _isEditing
+            ? (String? newValue) => setState(() => _selectedLanguage = newValue)
+            : null,
+        decoration: InputDecoration(
+          labelText: 'Language',
+          prefixIcon: const Icon(
+            Icons.language_outlined,
+            color: Color(0xFF0A1D37),
+          ),
+          fillColor: _isEditing ? Colors.white : Colors.grey.shade100,
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade200),
           ),
         ),
       ),

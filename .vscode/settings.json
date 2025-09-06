@@ -4,3 +4,6 @@
     "{**/.c4z/.extsrcs/*.PROTSYM.cbl,**/.c4z/.extsrcs/*.PROTSYM.listing}": true
   }
 }
+{
+  "cmake.sourceDirectory": "C:/Users/azeb/lawgen-mobile-app/linux"
+}

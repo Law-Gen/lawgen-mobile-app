@@ -3,7 +3,7 @@ class OtpModel extends OTP{
   OtpModel({
     required String email,
     required String otpCode,
-    required String? resetToken,
+    required String resetToken,
   }
   ): super(email: email, otpCode: otpCode, resetToken: resetToken);
   factory OtpModel.fromJson(Map<String, dynamic> json){

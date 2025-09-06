@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../onboarding_auth/presentation/bloc/auth_bloc.dart';
 import '../../../onboarding_auth/presentation/bloc/auth_state.dart';
 
@@ -123,7 +124,7 @@ class ChatDrawer extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        Navigator.of(context).pushNamed('/signup');
+                        context.go('/signup');
                       },
                       icon: const Icon(Icons.person_add_alt_1),
                       label: const Text('Sign Up'),

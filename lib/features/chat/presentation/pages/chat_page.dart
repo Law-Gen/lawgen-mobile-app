@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../bloc/chat_bloc.dart';
 import '../widgets/chat_drawer.dart';
@@ -134,13 +135,14 @@ class _ChatPageState extends State<ChatPage> {
         actions: [
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
-              if (authState is Unauthenticated) {
+              // Show Sign Up for any non-authenticated state
+              if (authState is! Authenticated) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Navigate to sign up page (replace with your route)
-                      Navigator.of(context).pushNamed('/signup');
+                      // Navigate using go_router
+                      GoRouter.of(context).go('/signup');
                     },
                     icon: const Icon(Icons.person_add_alt_1),
                     label: const Text('Sign Up'),
@@ -533,9 +535,7 @@ class _AiDisclaimer extends StatelessWidget {
                     style: linkStyle,
                     recognizer: TapGestureRecognizer()
                       ..onTap = () {
-                        Navigator.of(
-                          context,
-                        ).pushNamed('/legal-aid-directories');
+                        GoRouter.of(context).go('/legal-aid');
                       },
                   ),
                   TextSpan(text: '.', style: baseStyle),
