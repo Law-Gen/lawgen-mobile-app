@@ -1,4 +1,5 @@
-// domain/usecases/check_auth_status_usecase.dart
+// features/onboarding_auth/domain/usecases/auth_check.dart
+
 import '../repositories/auth_repository.dart';
 
 class CheckAuthStatusUseCase {

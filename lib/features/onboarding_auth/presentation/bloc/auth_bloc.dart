@@ -1,3 +1,5 @@
+// features/onboarding_auth/presentation/bloc/auth_bloc.dart
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/signin_usecase.dart';
 import '../../domain/usecases/signup_usecase.dart';
@@ -39,12 +41,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ResetPasswordRequested>(_onResetPasswordRequested);
   }
 
-
   Future<void> _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
       final isLoggedIn = await checkAuthStatusUseCase();
-      emit(isLoggedIn ? Authenticated() : Unauthenticated());
+      if (isLoggedIn) {
+        // Here you could optionally fetch user data with getMeUseCase
+        emit(Authenticated());
+      } else {
+        emit(Unauthenticated());
+      }
     } catch (e) {
       emit(AuthError(e.toString().replaceAll('Exception: ', '')));
     }
@@ -60,9 +66,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       email: event.email,
       password: event.password,
     );
+    // Updated to handle a void success case (Right<Failures, void>)
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (user) => emit(SignUpEmailSent()),
+      (_) => emit(SignUpEmailSent()),
     );
   }
 
@@ -74,21 +81,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final result = await signInUseCase(
       email: event.email,
       password: event.password,
-    );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(Authenticated()),
-    );
-  }
-
-  Future<void> _onGoogleSignInRequested(
-    GoogleSignInRequested event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(AuthLoading());
-    final result = await googleSignInUseCase(
-      authCode: event.authCode,
-      codeVerifier: event.codeVerifier,
     );
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -119,11 +111,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (otp) => emit(
-        otp.resetToken.isNotEmpty
-            ? OTPVerified(otp.resetToken)
-            : const AuthError('Verification failed: Missing reset token.'),
-      ),
+      (otp) => emit(OTPVerified(otp.resetToken)),
     );
   }
 
@@ -139,6 +127,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (_) => emit(PasswordResetSuccess()),
+    );
+  }
+
+  Future<void> _onGoogleSignInRequested(
+    GoogleSignInRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await googleSignInUseCase(
+      authCode: event.authCode,
+      codeVerifier: event.codeVerifier,
+    );
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (user) => emit(Authenticated()),
     );
   }
 }

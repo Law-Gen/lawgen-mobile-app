@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
 import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_state.dart'; // Import AuthState
 
 import '../features/LegalAidDirectory/injection_container.dart';
 import '../features/catalog/catalog_injection.dart';
@@ -17,7 +18,7 @@ import 'router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Init Hive & register adapters (safe to call only once)
+  // Init Hive & register adapters
   await Hive.initFlutter();
   if (!Hive.isAdapterRegistered(1)) {
     Hive.registerAdapter(ConversationModelAdapter());
@@ -36,26 +37,26 @@ Future<void> main() async {
   await initQuiz();
   await initCatalog();
 
+  // MODIFIED: We need the full AppRouter instance, not just its router object.
   final appRouter = AppRouter();
-  runApp(MyApp(router: appRouter.router));
+  runApp(MyApp(appRouter: appRouter));
 }
 
 class MyApp extends StatelessWidget {
-  final GoRouter router;
-  const MyApp({super.key, required this.router});
+  // MODIFIED: Changed from GoRouter to the AppRouter class
+  final AppRouter appRouter;
+  const MyApp({super.key, required this.appRouter});
 
   @override
   Widget build(BuildContext context) {
     final lawgenColorScheme = const ColorScheme.light(
-      primary: Color(0xFF7D6E63), // User bubble & Sign Up button
-      onPrimary: Colors.white, // Text on user bubble
-      surfaceContainerHighest: Color(
-        0xFFEDEAE6,
-      ), // AI bubble & input field fill
-      onSurfaceVariant: Color(0xFF5C534D), // Text on AI bubble
-      surface: Color(0xFFF9F6F2), // Main background
-      onSurface: Color(0xFF5C534D), // Main text color
-      secondary: Color(0xFF5C534D), // Icons and other accents
+      primary: Color(0xFF7D6E63),
+      onPrimary: Colors.white,
+      surfaceContainerHighest: Color(0xFFEDEAE6),
+      onSurfaceVariant: Color(0xFF5C534D),
+      surface: Color(0xFFF9F6F2),
+      onSurface: Color(0xFF5C534D),
+      secondary: Color(0xFF5C534D),
     );
 
     return MultiRepositoryProvider(
@@ -64,40 +65,57 @@ class MyApp extends StatelessWidget {
         providers: [
           ...chatBlocProviders,
           BlocProvider<AuthBloc>(
+            // The AppStarted event is dispatched here to check auth status on startup.
             create: (_) => di.sl<AuthBloc>()..add(AppStarted()),
           ),
         ],
-        child: MaterialApp.router(
-          title: 'Flutter Demo',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: lawgenColorScheme,
-            scaffoldBackgroundColor: lawgenColorScheme.background,
-            appBarTheme: AppBarTheme(
-              backgroundColor: lawgenColorScheme.background,
-              foregroundColor: lawgenColorScheme
-                  .onBackground, // For back button, menu icon, etc.
-              elevation: 0,
-              titleTextStyle: TextStyle(
-                color: lawgenColorScheme.onBackground,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            // Style for buttons like 'New Chat'
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: lawgenColorScheme.primary,
-                foregroundColor: lawgenColorScheme.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+        // NEW: This BlocListener is the "bridge" between the AuthBloc and the AppRouter.
+        child: BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            // When the BLoC's state changes, we update the router's ValueNotifier.
+            // This will automatically trigger GoRouter's redirect logic.
+            if (state is Authenticated) {
+              appRouter.isAuthenticated.value = true;
+            } else if (state is Unauthenticated || state is AuthError) {
+              // Also treat errors as an unauthenticated state for routing safety.
+              appRouter.isAuthenticated.value = false;
+            }
+          },
+          child: MaterialApp.router(
+            title: 'Flutter Demo',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              useMaterial3: true,
+              colorScheme: lawgenColorScheme,
+              scaffoldBackgroundColor:
+                  lawgenColorScheme.surface, // Corrected from .background
+              appBarTheme: AppBarTheme(
+                backgroundColor:
+                    lawgenColorScheme.surface, // Corrected from .background
+                foregroundColor:
+                    lawgenColorScheme.onSurface, // Corrected from .onBackground
+                elevation: 0,
+                titleTextStyle: TextStyle(
+                  color: lawgenColorScheme
+                      .onSurface, // Corrected from .onBackground
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: lawgenColorScheme.primary,
+                  foregroundColor: lawgenColorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
             ),
+            // MODIFIED: Get the router config from our AppRouter instance.
+            routerConfig: appRouter.router,
           ),
-          routerConfig: router,
         ),
       ),
     );

@@ -1,3 +1,5 @@
+// features/onboarding_auth/data/datasources/auth_local_datasource.dart
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract class AuthLocalDatasource {
@@ -13,38 +15,39 @@ abstract class AuthLocalDatasource {
 class AuthLocalDatasourceImpl implements AuthLocalDatasource {
   final FlutterSecureStorage secureStorage;
 
-  static const _accessTokenKey = 'ACCESS_TOKEN';
-  static const _refreshTokenKey = 'REFRESH_TOKEN';
+  // ✅ FIX: Keys are now public static constants. This is the single source of truth.
+  static const String accessTokenKey = 'ACCESS_TOKEN';
+  static const String refreshTokenKey = 'REFRESH_TOKEN';
+
+  // These can remain private as they are only used within this file.
   static const _userIdKey = 'USER_ID';
   static const _userEmailKey = 'USER_EMAIL';
   static const _userNameKey = 'USER_NAME';
 
   AuthLocalDatasourceImpl({required this.secureStorage});
 
-  // ---------- TOKEN ----------
+  // ---------- TOKEN METHODS ----------
   @override
   Future<void> cacheToken(String accessToken, String refreshToken) async {
-    await secureStorage.write(key: _accessTokenKey, value: accessToken);
-    await secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    // Now using the public constants to write data.
+    await secureStorage.write(key: accessTokenKey, value: accessToken);
+    await secureStorage.write(key: refreshTokenKey, value: refreshToken);
   }
 
   @override
   Future<Map<String, String?>> getTokens() async {
-    final accessToken = await secureStorage.read(key: _accessTokenKey);
-    final refreshToken = await secureStorage.read(key: _refreshTokenKey);
-    return {
-      'accessToken': accessToken,
-      'refreshToken': refreshToken,
-    };
+    final accessToken = await secureStorage.read(key: accessTokenKey);
+    final refreshToken = await secureStorage.read(key: refreshTokenKey);
+    return {'accessToken': accessToken, 'refreshToken': refreshToken};
   }
 
   @override
   Future<void> clearTokens() async {
-    await secureStorage.delete(key: _accessTokenKey);
-    await secureStorage.delete(key: _refreshTokenKey);
+    await secureStorage.delete(key: accessTokenKey);
+    await secureStorage.delete(key: refreshTokenKey);
   }
 
-  // ---------- USER ----------
+  // ---------- USER INFO METHODS (Unchanged) ----------
   @override
   Future<void> cacheUserInfo(String userId, String email, String name) async {
     await secureStorage.write(key: _userIdKey, value: userId);
@@ -58,11 +61,7 @@ class AuthLocalDatasourceImpl implements AuthLocalDatasource {
     final email = await secureStorage.read(key: _userEmailKey);
     final name = await secureStorage.read(key: _userNameKey);
 
-    return {
-      'userId': userId,
-      'email': email,
-      'name': name,
-    };
+    return {'userId': userId, 'email': email, 'name': name};
   }
 
   @override

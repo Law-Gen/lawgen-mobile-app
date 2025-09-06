@@ -1,7 +1,12 @@
+// features/onboarding_auth/presentation/pages/sign_up_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pkce/pkce.dart';
+
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -22,8 +27,20 @@ class _SignUpPageState extends State<SignUpPage> {
   final confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
 
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  // --- Logic for Email/Password Sign-Up ---
   void _signUp() {
-    if (_formKey.currentState!.validate()) {
+    // First, check if the form is valid
+    if (_formKey.currentState?.validate() ?? false) {
+      // If valid, dispatch the event to the AuthBloc
       context.read<AuthBloc>().add(
         SignUpRequested(
           full_name: fullNameController.text.trim(),
@@ -34,26 +51,61 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  void _navigateToSignIn() {
-    context.go('/signin');
+  // --- Logic for Google Sign-In ---
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final pkcePair = PkcePair.generate();
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId:
+            '329268316396-v9d06obror1h6i1199i6ap2703nhdjk3.apps.googleusercontent.com',
+        scopes: <String>['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return; // User cancelled the flow
+
+      final auth = await googleUser.authentication;
+      final serverAuthCode = auth.serverAuthCode;
+
+      if (serverAuthCode == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to get authorization code from Google.'),
+          ),
+        );
+        return;
+      }
+
+      if (mounted) {
+        context.read<AuthBloc>().add(
+          GoogleSignInRequested(
+            authCode: serverAuthCode,
+            codeVerifier: pkcePair.codeVerifier,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred during Google Sign-In: $error'),
+          ),
+        );
+      }
+    }
   }
 
-  // Dispose controllers to free up resources
-  @override
-  void dispose() {
-    fullNameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    super.dispose();
+  // --- Navigation Methods ---
+  void _navigateToSignIn() {
+    // This is only used for the "Already have an account?" text button.
+    context.go('/signin');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // The BlocListener handles "side effects" like showing SnackBars or navigating
-      // without rebuilding the UI.
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -64,7 +116,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
             );
           } else if (state is SignUpEmailSent) {
-            // After successful signup, navigate to the sign-in page
             context.go('/signin');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -74,17 +125,15 @@ class _SignUpPageState extends State<SignUpPage> {
                 backgroundColor: Colors.green,
               ),
             );
+          } else if (state is Authenticated) {
+            // Also handle successful Google Sign-In from this page
+            context.go('/chat');
           }
         },
-        // The BlocBuilder rebuilds the UI based on the state.
         child: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            // If the state is loading, show a full-screen loading indicator.
-            if (state is AuthLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+            final isLoading = state is AuthLoading;
 
-            // Otherwise, show the sign-up form.
             return SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
@@ -93,7 +142,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Top Row: Back button and logo
+                      // Header
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -120,7 +169,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Full Name
+                      // Form Fields
                       TextFormField(
                         controller: fullNameController,
                         validator: (value) =>
@@ -131,8 +180,6 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-
-                      // Email
                       TextFormField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -149,8 +196,6 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 16.0),
-
-                      // Password
                       TextFormField(
                         controller: passwordController,
                         obscureText: !_isPasswordVisible,
@@ -162,8 +207,6 @@ class _SignUpPageState extends State<SignUpPage> {
                         decoration: _passwordDecoration('Password'),
                       ),
                       const SizedBox(height: 16),
-
-                      // Confirm Password
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: !_isPasswordVisible,
@@ -179,7 +222,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
                       // Sign Up Button
                       ElevatedButton(
-                        onPressed: _navigateToSignIn,
+                        // ✅ FIX: Changed from _navigateToSignIn to _signUp
+                        // ✅ IMPROVEMENT: Button is disabled during loading state
+                        onPressed: isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0A1D37),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -187,10 +232,22 @@ class _SignUpPageState extends State<SignUpPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 24),
 
@@ -209,9 +266,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
                       // Google Button
                       OutlinedButton(
-                        onPressed: () {
-                          // TODO: Implement Google Sign-In logic
-                        },
+                        onPressed: isLoading
+                            ? null
+                            : _handleGoogleSignIn, // ✅ Wired up Google Sign In
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -231,7 +288,10 @@ class _SignUpPageState extends State<SignUpPage> {
                             const SizedBox(width: 8),
                             const Text(
                               'Continue with Google',
-                              style: TextStyle(fontSize: 16),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
                             ),
                           ],
                         ),
