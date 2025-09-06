@@ -13,7 +13,7 @@ class LegalContentLoading extends LegalContentState {}
 
 /// Status saat kategori berhasil dimuat.
 class LegalCategoriesLoaded extends LegalContentState {
-  final List<LegalDocument> categories;
+  final List<LegalGroup> categories;
 
   const LegalCategoriesLoaded(this.categories);
 
@@ -23,7 +23,7 @@ class LegalCategoriesLoaded extends LegalContentState {
 
 /// Status saat artikel berhasil dimuat.
 class LegalArticlesLoaded extends LegalContentState {
-  final List<LegalDocument> articles;
+  final List<LegalContent> articles;
 
   const LegalArticlesLoaded(this.articles);
 

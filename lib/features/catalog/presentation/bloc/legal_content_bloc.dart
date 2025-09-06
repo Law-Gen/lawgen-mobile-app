@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../core/errors/failure.dart';
 import '../../domain/entities/legal_document.dart';
+import '../../domain/entities/legal_group.dart';
 import '../../domain/usecases/get_legal_documents_by_category_id_usecase.dart';
 import '../../domain/usecases/get_legal_documents_usecase.dart';
 

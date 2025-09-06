@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/legal_document.dart';
 import '../../catalog_injection.dart'; // Make sure this path is correct
+import '../../domain/entities/legal_group.dart';
 import '../bloc/legal_content_bloc.dart';
 
 // -- Design Constants --
@@ -117,8 +118,9 @@ class _LegalCategoriesPageState extends State<LegalCategoriesPage> {
                 if (state is LegalCategoriesLoaded) {
                   final allCategories = state.categories;
                   final filteredCategories = allCategories.where((category) {
-                    final titleLower = category.name.toLowerCase();
-                    final descriptionLower = category.description.toLowerCase();
+                    final titleLower = category.groupName.toLowerCase();
+                    final descriptionLower =
+                        '.....'; //category.description.toLowerCase()
                     final searchLower = _searchQuery.toLowerCase();
 
                     return titleLower.contains(searchLower) ||
@@ -164,7 +166,7 @@ class _LegalCategoriesPageState extends State<LegalCategoriesPage> {
 }
 
 class _CategoryCard extends StatelessWidget {
-  final LegalDocument category;
+  final LegalGroup category;
 
   const _CategoryCard({required this.category});
 
@@ -183,7 +185,7 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayData = _getDisplayData(category.name);
+    final displayData = _getDisplayData(category.groupName);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
@@ -199,7 +201,7 @@ class _CategoryCard extends StatelessWidget {
             Icon(displayData['icon'], size: 40, color: kButtonColor),
             const SizedBox(height: 16),
             Text(
-              category.name,
+              category.groupName,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -207,9 +209,9 @@ class _CategoryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              category.description,
-              style: const TextStyle(fontSize: 14, color: kSecondaryTextColor),
+            const Text(
+              '...',
+              style: TextStyle(fontSize: 14, color: kSecondaryTextColor),
             ),
             const SizedBox(height: 20),
             Row(
@@ -230,7 +232,10 @@ class _CategoryCard extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  context.push('/topics/${category.id}', extra: category.name);
+                  context.push(
+                    '/topics/${category.id}',
+                    extra: category.groupName,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kButtonColor,
