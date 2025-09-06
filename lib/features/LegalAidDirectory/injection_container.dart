@@ -39,10 +39,10 @@ Future<void> initLegalAid() async {
   //! Data sources
   LegalAidSL.registerLazySingleton<LegalAidRemoteDataSource>(
     // CHANGE THIS LINE:
-    // () => LegalAidRemoteDataSourceImpl(client: sl()),
+    () => LegalAidRemoteDataSourceImpl(client: LegalAidSL()),
 
     // TO THIS:
-    () => DummyLegalAidRemoteDataSourceImpl(),
+    // () => DummyLegalAidRemoteDataSourceImpl(),
   );
 
   // // Debug print to confirm registrations
