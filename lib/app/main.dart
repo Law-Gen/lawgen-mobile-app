@@ -15,7 +15,6 @@ import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dar
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
 
   // Init Hive & register adapters (safe to call only once)
   await Hive.initFlutter();
@@ -34,9 +33,10 @@ Future<void> main() async {
   await di.init();
   await initQuiz();
   await initCatalog();
+  await initLegalAid();
 
   final appRouter = AppRouter();
-  initLegalAid();
+
   runApp(MyApp(router: appRouter.router));
 }
 
@@ -46,23 +46,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lawgenColorScheme = ColorScheme.light(
-      primary: const Color(0xFF7D6E63), // User bubble & Sign Up button
+    final lawgenColorScheme = const ColorScheme.light(
+      primary: Color(0xFF7D6E63), // User bubble & Sign Up button
       onPrimary: Colors.white, // Text on user bubble
-      surfaceVariant: const Color(0xFFEDEAE6), // AI bubble & input field fill
-      onSurfaceVariant: const Color(0xFF5C534D), // Text on AI bubble
-      background: const Color(0xFFF9F6F2), // Main background
-      onBackground: const Color(0xFF5C534D), // Main text color
-      secondary: const Color(0xFF5C534D), // Icons and other accents
+      surfaceVariant: Color(0xFFEDEAE6), // AI bubble & input field fill
+      onSurfaceVariant: Color(0xFF5C534D), // Text on AI bubble
+      background: Color(0xFFF9F6F2), // Main background
+      onBackground: Color(0xFF5C534D), // Main text color
+      secondary: Color(0xFF5C534D), // Icons and other accents
     );
-  
+
     return MultiRepositoryProvider(
       providers: [...chatRepositoryProviders],
       child: MultiBlocProvider(
-        providers: [...chatBlocProviders,
-         BlocProvider<AuthBloc>(
-          create: (_) => di.sl<AuthBloc>()..add(AppStarted()),
-        ),],
+        providers: [
+          ...chatBlocProviders,
+          BlocProvider<AuthBloc>(
+            create: (_) => di.sl<AuthBloc>()..add(AppStarted()),
+          ),
+        ],
         child: MaterialApp.router(
           title: 'Flutter Demo',
           debugShowCheckedModeBanner: false,

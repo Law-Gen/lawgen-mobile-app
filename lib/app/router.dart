@@ -286,10 +286,10 @@ class AppRouter {
 
       // If the user is not authenticated and is trying to access a protected route,
       // redirect them to the sign-in page.
-      final isProtected =
-          state.uri.toString().startsWith('/chat') ||
-          state.uri.toString().startsWith('/profile') ||
-          state.uri.toString().startsWith('/admin');
+      // final isProtected =
+      //     state.uri.toString().startsWith('/chat') ||
+      //     state.uri.toString().startsWith('/profile') ||
+      //     state.uri.toString().startsWith('/admin');
    
 
     //   // if (!isAuthenticated && isProtected) {

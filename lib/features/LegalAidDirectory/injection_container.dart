@@ -9,7 +9,7 @@ import 'presentation/bloc/legal_aid_bloc.dart';
 // Use the same GetIt instance from your main container
 final LegalAidSL = GetIt.instance;
 
-void initLegalAid() {
+Future<void> initLegalAid() async {
   //================================================
   // Feature - Legal Aid Directory
   //================================================
