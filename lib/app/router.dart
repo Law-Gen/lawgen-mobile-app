@@ -21,6 +21,14 @@ import '../features/quize/presentation/pages/question_page.dart';
 import '../features/quize/presentation/pages/quize_home_page.dart';
 import '../features/quize/presentation/pages/quize_result_page.dart';
 
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
 // --- Placeholder Screens (Keep as is) ---
 class PlaceholderScreen extends StatelessWidget {
   final String title;
@@ -47,7 +55,7 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
-// --- Main App Shell with Bottom Navigation (Keep as is) ---
+// --- Main App Shell with Bottom Navigation (Updated without packages) ---
 class MainAppShell extends StatelessWidget {
   final Widget child;
   const MainAppShell({super.key, required this.child});
@@ -57,24 +65,44 @@ class MainAppShell extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color.fromARGB(233, 238, 236, 231),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color.fromARGB(255, 155, 113, 87),
-        elevation: 20,
-        unselectedItemColor: const Color.fromARGB(121, 176, 149, 133),
+        // --- Theming ---
+        backgroundColor:
+            kCardBackgroundColor, // A clean white background for the bar
+        selectedItemColor:
+            kButtonColor, // Active icon and label color from your theme
+        unselectedItemColor:
+            kSecondaryTextColor, // Inactive icon and label color
+        // --- Style and Layout ---
+        type: BottomNavigationBarType
+            .fixed, // This ensures all labels are always visible
+        elevation: 10, // Adds a subtle shadow for depth
+        showUnselectedLabels: true, // Explicitly ensure labels are always shown
+        // --- Functionality ---
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
+
+        // --- Items and Icons ---
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.bubble_chart_outlined),
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble), // Filled icon when active
             label: 'Chat',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.my_library_books_outlined),
+            icon: Icon(Icons.library_books_outlined),
+            activeIcon: Icon(Icons.library_books), // Filled icon when active
             label: 'Catalog',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizzes'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_outlined),
+            activeIcon: Icon(Icons.quiz), // Filled icon when active
+            label: 'Quizzes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person), // Filled icon when active
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -107,7 +135,7 @@ class MainAppShell extends StatelessWidget {
   }
 }
 
-// --- GoRouter Configuration ---
+// --- GoRouter Configuration (No Changes Below) ---
 class AppRouter {
   final ValueNotifier<bool> isAuthenticated = ValueNotifier(false);
   final ValueNotifier<bool> hasSeenOnboarding = ValueNotifier(false);
