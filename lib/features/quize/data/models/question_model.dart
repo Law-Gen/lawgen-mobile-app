@@ -24,7 +24,8 @@ class QuestionModel extends Question {
       id: json['id'] as String,
       text: json['text'] as String,
       options: Map<String, String>.from(json['options'] as Map),
-      correctOption: json['correctOption'] as String,
+      // 👇 FIXED: Changed from 'correctOption' to match the API response key
+      correctOption: json['correct_option'] as String,
     );
   }
 
@@ -34,7 +35,8 @@ class QuestionModel extends Question {
       'id': id,
       'text': text,
       'options': options,
-      'correctOption': correctOption,
+      // 👇 FIXED: Changed to 'correct_option' to match the API standard
+      'correct_option': correctOption,
     };
   }
 

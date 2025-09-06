@@ -1,9 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'question.dart';
 
-/// Quiz Entity
 class Quiz extends Equatable {
   final String id;
+  final String categoryId; // ✅ ADDED: This is essential data from the API
   final String name;
   final String description;
   final String totalQuestion;
@@ -11,6 +11,7 @@ class Quiz extends Equatable {
 
   const Quiz({
     required this.id,
+    required this.categoryId, // ✅ ADDED
     required this.name,
     required this.description,
     required this.totalQuestion,
@@ -18,5 +19,13 @@ class Quiz extends Equatable {
   });
 
   @override
-  List<Object> get props => [id, name, description, totalQuestion, questions];
+  // ✅ ADDED: Add categoryId to props for value equality
+  List<Object> get props => [
+    id,
+    categoryId,
+    name,
+    description,
+    totalQuestion,
+    questions,
+  ];
 }

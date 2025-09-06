@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
+
 import '../features/LegalAidDirectory/injection_container.dart';
 import '../features/catalog/catalog_injection.dart';
-import '../features/quize/quiz_injection.dart';
-import 'router.dart';
 import '../features/chat/chat_dependency.dart';
 import '../features/chat/data/models/conversation_model.dart';
 import '../features/chat/data/models/message_model.dart';
+import '../features/quize/quiz_injection.dart';
 import 'dependency_injection.dart' as di;
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
+import 'router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

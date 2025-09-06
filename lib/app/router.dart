@@ -132,7 +132,7 @@ class AppRouter {
   // Change to `true` to skip onboarding
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/topics',
+    initialLocation: '/quiz',
     refreshListenable: hasSeenOnboarding,
     routes: [
       // --- Onboarding ---

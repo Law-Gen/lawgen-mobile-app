@@ -1,3 +1,5 @@
+// lib/features/quiz/presentation/bloc/quiz_state.dart
+
 part of 'quiz_bloc.dart';
 
 sealed class QuizState extends Equatable {
@@ -13,28 +15,50 @@ class QuizCategoriesLoading extends QuizState {}
 
 class QuizeQuestionLoading extends QuizState {}
 
+/// The primary state for displaying the list of categories and their quizzes.
 final class QuizCategoriesLoaded extends QuizState {
+  // Category Data
   final List<QuizCategory> categories;
+  final int totalCategoryPages;
+  final int currentCategoryPage;
+
+  // Quiz Data
   final List<Quiz> quizzes;
+  final int totalQuizPages;
+  final int currentQuizPage;
+
+  // UI State
   final String? selectedCategoryId;
   final bool isQuizzesLoading; // To show loading indicator for quizzes only
 
   const QuizCategoriesLoaded({
     required this.categories,
+    this.totalCategoryPages = 1,
+    this.currentCategoryPage = 1,
     required this.quizzes,
+    this.totalQuizPages = 1,
+    this.currentQuizPage = 1,
     this.selectedCategoryId,
     this.isQuizzesLoading = false,
   });
 
   QuizCategoriesLoaded copyWith({
     List<QuizCategory>? categories,
+    int? totalCategoryPages,
+    int? currentCategoryPage,
     List<Quiz>? quizzes,
+    int? totalQuizPages,
+    int? currentQuizPage,
     String? selectedCategoryId,
     bool? isQuizzesLoading,
   }) {
     return QuizCategoriesLoaded(
       categories: categories ?? this.categories,
+      totalCategoryPages: totalCategoryPages ?? this.totalCategoryPages,
+      currentCategoryPage: currentCategoryPage ?? this.currentCategoryPage,
       quizzes: quizzes ?? this.quizzes,
+      totalQuizPages: totalQuizPages ?? this.totalQuizPages,
+      currentQuizPage: currentQuizPage ?? this.currentQuizPage,
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       isQuizzesLoading: isQuizzesLoading ?? this.isQuizzesLoading,
     );
@@ -43,21 +67,14 @@ final class QuizCategoriesLoaded extends QuizState {
   @override
   List<Object?> get props => [
     categories,
+    totalCategoryPages,
+    currentCategoryPage,
     quizzes,
+    totalQuizPages,
+    currentQuizPage,
     selectedCategoryId,
     isQuizzesLoading,
   ];
-}
-
-// This state can be removed if not used elsewhere, as QuizCategoriesLoaded
-// now handles quiz lists. If it's used on other pages, it can be kept.
-final class QuizzesByCategoryLoaded extends QuizState {
-  final List<Quiz> quizzes;
-
-  const QuizzesByCategoryLoaded({required this.quizzes});
-
-  @override
-  List<Object?> get props => [quizzes];
 }
 
 final class QuizLoaded extends QuizState {

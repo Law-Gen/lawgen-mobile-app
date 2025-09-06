@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 
@@ -51,7 +52,11 @@ Future<void> initQuiz() async {
   //! Data sources
   if (!quizSl.isRegistered<QuizRemoteDataSource>()) {
     quizSl.registerLazySingleton<QuizRemoteDataSource>(
-      () => QuizRemoteDataSourceImpl(),
+      // 👇 FIXED: Pass the required dependencies from the service locator (sl)
+      () => QuizRemoteDataSourceImpl(
+        client: quizSl<http.Client>(), // or simply sl()
+        storage: quizSl<FlutterSecureStorage>(), // or simply sl()
+      ),
     );
   }
 

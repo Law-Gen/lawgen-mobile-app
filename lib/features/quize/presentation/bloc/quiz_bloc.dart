@@ -1,5 +1,7 @@
-import 'package:bloc/bloc.dart';
+// lib/features/quiz/presentation/bloc/quiz_bloc.dart
+
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/failure.dart';
 import '../../../../core/usecases/usecase_params.dart';
@@ -44,8 +46,9 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
     await result.fold(
       (failure) async =>
           emit(QuizError(message: _mapFailureToMessage(failure))),
-      (categories) async {
-        if (categories.isEmpty) {
+      // 👇 The success result is now a PaginatedResponse object
+      (paginatedCategories) async {
+        if (paginatedCategories.items.isEmpty) {
           emit(
             const QuizCategoriesLoaded(
               categories: [],
@@ -55,21 +58,28 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
           );
         } else {
           // Auto-load quizzes for the first category
-          final firstCategoryId = categories.first.id;
+          final firstCategoryId = paginatedCategories.items.first.id;
           final quizzesResult = await getQuizzesByCategory(
             CategoryPageParams(
               categoryId: firstCategoryId,
-              page: event.page,
+              page: 1, // Always load the first page of quizzes initially
               limit: event.limit,
             ),
           );
+
           quizzesResult.fold(
             (failure) =>
                 emit(QuizError(message: _mapFailureToMessage(failure))),
-            (quizzes) => emit(
+            // 👇 This result is also a PaginatedResponse
+            (paginatedQuizzes) => emit(
               QuizCategoriesLoaded(
-                categories: categories,
-                quizzes: quizzes,
+                // ✅ Populate the state with data from the paginated responses
+                categories: paginatedCategories.items,
+                totalCategoryPages: paginatedCategories.totalPages,
+                currentCategoryPage: paginatedCategories.currentPage,
+                quizzes: paginatedQuizzes.items,
+                totalQuizPages: paginatedQuizzes.totalPages,
+                currentQuizPage: paginatedQuizzes.currentPage,
                 selectedCategoryId: firstCategoryId,
               ),
             ),
@@ -85,7 +95,6 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
   ) async {
     final currentState = state;
     if (currentState is QuizCategoriesLoaded) {
-      // Emit a state to show the quizzes are loading, but keep the old UI data
       emit(
         currentState.copyWith(
           isQuizzesLoading: true,
@@ -103,9 +112,13 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
 
       result.fold(
         (failure) => emit(QuizError(message: _mapFailureToMessage(failure))),
-        (quizzes) => emit(
+        // 👇 The success result is a PaginatedResponse
+        (paginatedQuizzes) => emit(
           currentState.copyWith(
-            quizzes: quizzes,
+            // ✅ Populate the state with the new quiz data and pagination info
+            quizzes: paginatedQuizzes.items,
+            totalQuizPages: paginatedQuizzes.totalPages,
+            currentQuizPage: paginatedQuizzes.currentPage,
             selectedCategoryId: event.categoryId,
             isQuizzesLoading: false,
           ),
@@ -139,20 +152,16 @@ class QuizBloc extends Bloc<QuizEvent, QuizState> {
   }
 }
 
-// ... (failure mapping code remains the same)
-const String SERVER_FAILURE_MESSAGE = 'Server Failure';
-const String NETWORK_FAILURE_MESSAGE = 'No Internet Connection';
-const String CACHE_FAILURE_MESSAGE = 'Cache Failure';
-
+// Helper function to map failures to error messages
 String _mapFailureToMessage(Failure failure) {
   switch (failure.runtimeType) {
     case ServerFailure:
-      return SERVER_FAILURE_MESSAGE;
+      return 'Server Failure';
     case NetworkFailure:
-      return NETWORK_FAILURE_MESSAGE;
+      return 'No Internet Connection';
     case CacheFailure:
-      return CACHE_FAILURE_MESSAGE;
+      return 'Cache Failure';
     default:
-      return 'Unexpected Error';
+      return 'An unexpected error occurred';
   }
 }

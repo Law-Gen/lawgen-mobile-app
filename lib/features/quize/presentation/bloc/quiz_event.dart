@@ -1,3 +1,5 @@
+// lib/features/quiz/presentation/bloc/quiz_event.dart
+
 part of 'quiz_bloc.dart';
 
 sealed class QuizEvent extends Equatable {
@@ -7,7 +9,6 @@ sealed class QuizEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-// Load all categories with pagination
 class LoadQuizCategoriesEvent extends QuizEvent {
   final int page;
   final int limit;
@@ -18,16 +19,6 @@ class LoadQuizCategoriesEvent extends QuizEvent {
   List<Object?> get props => [page, limit];
 }
 
-class QuizeCategorySelected extends QuizEvent {
-  final String categoryId;
-
-  const QuizeCategorySelected({required this.categoryId});
-
-  @override
-  List<Object?> get props => [categoryId];
-}
-
-// Load quizzes for a specific category
 class LoadQuizzesByCategoryEvent extends QuizEvent {
   final String categoryId;
   final int page;
@@ -43,7 +34,6 @@ class LoadQuizzesByCategoryEvent extends QuizEvent {
   List<Object?> get props => [categoryId, page, limit];
 }
 
-// Get quiz with all details
 class GetQuizByIdEvent extends QuizEvent {
   final String quizId;
 
@@ -53,7 +43,6 @@ class GetQuizByIdEvent extends QuizEvent {
   List<Object?> get props => [quizId];
 }
 
-// Get all questions for a quiz
 class GetQuestionsByQuizIdEvent extends QuizEvent {
   final String quizId;
 
