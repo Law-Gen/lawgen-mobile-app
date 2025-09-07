@@ -9,6 +9,7 @@ import '../features/onboarding_auth/domain/repositories/auth_repository.dart';
 import '../features/onboarding_auth/domain/usecases/auth_check.dart';
 
 import '../features/onboarding_auth/domain/usecases/signin_usecase.dart';
+import '../features/onboarding_auth/domain/usecases/signout_usecase.dart';
 import '../features/onboarding_auth/domain/usecases/signup_usecase.dart';
 import '../features/onboarding_auth/domain/usecases/forget_password_usecase.dart';
 import '../features/onboarding_auth/domain/usecases/getme_usecase.dart';
@@ -50,7 +51,10 @@ Future<void> init() async {
 
   if (!sl.isRegistered<AuthRemoteDatasource>()) {
     sl.registerLazySingleton<AuthRemoteDatasource>(
-      () => AuthRemoteDatasourceImpl(client: sl(), storage: sl()),
+      () => AuthRemoteDatasourceImpl(
+        client: sl(),
+        localDatasource: sl(),
+      ), // <- FIXED
     );
   }
 
@@ -128,6 +132,7 @@ Future<void> init() async {
   if (!sl.isRegistered<GoogleSignInUseCase>()) {
     sl.registerLazySingleton(() => GoogleSignInUseCase(sl()));
   }
+  sl.registerLazySingleton(() => SignOutUseCase(sl()));
 
   if (!sl.isRegistered<AuthBloc>()) {
     sl.registerFactory(
@@ -143,6 +148,7 @@ Future<void> init() async {
         getMeUseCase: sl(),
 
         googleSignInUseCase: sl(),
+        signOutUseCase: sl(),
       ),
     );
   }

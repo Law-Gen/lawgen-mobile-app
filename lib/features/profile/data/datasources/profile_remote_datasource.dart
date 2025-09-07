@@ -1,7 +1,12 @@
+// features/profile/data/datasources/profile_remote_datasource.dart
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+// ✅ FIX 1: Import the auth local datasource to get access to the key constants.
+import '../../../onboarding_auth/data/datasources/auth_local_datasource.dart';
 import '../../domain/entities/profile.dart';
 
 abstract class ProfileRemoteDataSource {
@@ -16,10 +21,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   ProfileRemoteDataSourceImpl({required this.client, required this.storage});
 
+  /// Helper to get the token using the centralized key.
+  Future<String?> _getToken() async {
+    // ✅ FIX 2: Use the static constant from the single source of truth.
+    return await storage.read(key: AuthLocalDatasourceImpl.accessTokenKey);
+  }
+
   @override
   Future<Profile> getProfile() async {
     print("--- [Profile DS] Attempting to get profile ---");
-    final token = await storage.read(key: 'access_token');
+    final token = await _getToken(); // Uses the helper
     if (token == null) throw Exception('Authentication Error: No token found.');
     print("--- [Profile DS] Found token, making GET request to /me ---");
 
@@ -42,7 +53,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<Profile> updateProfile(Profile profile, File? imageFile) async {
     print("--- [Profile DS] Attempting to update profile ---");
-    final token = await storage.read(key: 'access_token');
+    final token = await _getToken(); // Uses the helper
     if (token == null) throw Exception('Authentication Error: No token found.');
     print(
       "--- [Profile DS] Found token, creating Multipart PUT request to /me ---",
@@ -53,13 +64,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
     // Add text fields
     request.fields['full_name'] = profile.full_name;
-    if (profile.gender != null && profile.gender!.isNotEmpty)
+    if (profile.gender != null && profile.gender!.isNotEmpty) {
       request.fields['gender'] = profile.gender!;
-    if (profile.birthDate != null && profile.birthDate!.isNotEmpty)
+    }
+    if (profile.birthDate != null && profile.birthDate!.isNotEmpty) {
       request.fields['birth_date'] = profile.birthDate!;
+    }
     if (profile.languagePreference != null &&
-        profile.languagePreference!.isNotEmpty)
+        profile.languagePreference!.isNotEmpty) {
       request.fields['language_preference'] = profile.languagePreference!;
+    }
 
     // Add image file if it exists
     if (imageFile != null) {

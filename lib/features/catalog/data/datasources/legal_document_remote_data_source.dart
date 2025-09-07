@@ -32,9 +32,9 @@ class LegalDocumentRemoteDataSourceImpl
   });
 
   Future<Map<String, String>> get _headers async {
-    // final token = await secureStorage.read(key: CACHED_AUTH_TOKEN);
-    final token =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjI1LCJnZW5kZXIiOiJtYWxlIiwiZXhwIjoxNzU3MTUyMDAxLCJpYXQiOjE3NTcxNTExMDF9.tLhEOoaVkeoUvGE1pZqIsF0YUNZbGOWS7q4ke_GXhK4';
+    final token = await secureStorage.read(key: CACHED_AUTH_TOKEN);
+    // final token =
+    //     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjI1LCJnZW5kZXIiOiJtYWxlIiwiZXhwIjoxNzU3MTUyMDAxLCJpYXQiOjE3NTcxNTExMDF9.tLhEOoaVkeoUvGE1pZqIsF0YUNZbGOWS7q4ke_GXhK4';
     if (token != null) {
       return {
         'Content-Type': 'application/json',
@@ -57,6 +57,11 @@ class LegalDocumentRemoteDataSourceImpl
     if (response.statusCode == 200) {
       return PaginatedLegalGroupsModel.fromJson(json.decode(response.body));
     } else {
+      print('--- API ERROR ---');
+      print('Request URL: $_baseUrl');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('-------------------');
       throw ServerException();
     }
   }
@@ -66,7 +71,7 @@ class LegalDocumentRemoteDataSourceImpl
     required String id,
   }) async {
     final response = await client.get(
-      Uri.parse('$_baseUrl/group/68bb23a4f47e399eebade021'),
+      Uri.parse('$_baseUrl/group/$id'),
       headers: await _headers,
     );
 
@@ -79,6 +84,11 @@ class LegalDocumentRemoteDataSourceImpl
           .map((jsonItem) => LegalContentModel.fromJson(jsonItem))
           .toList();
     } else {
+      print('--- API ERROR ---');
+      print('Request URL: $_baseUrl');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('-------------------');
       throw ServerException();
     }
   }

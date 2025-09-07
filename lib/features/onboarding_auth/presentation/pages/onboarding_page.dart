@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/router.dart'; 
+import '../../../../app/router.dart';
+
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
 
 class OnboardingPage extends StatefulWidget {
   final AppRouter router;
@@ -15,28 +22,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   int _currentPage = 0;
   bool _agreementChecked = false;
 
-  void _nextPage() {
-    if (_currentPage < 1) {
-      _pageController.animateToPage(
-        _currentPage + 1,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  Widget _buildPageIndicator(bool isActive) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-      width: isActive ? 12.0 : 8.0,
-      height: isActive ? 12.0 : 8.0,
-      decoration: BoxDecoration(
-        color: isActive ? Colors.black : Colors.grey,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-
   void _finishOnboardingAndNavigate(String route) async {
     await widget.router.setOnboardingSeen();
     if (mounted) {
@@ -47,145 +32,210 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
+      backgroundColor: kBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                children: [_buildIntroPage(), _buildDisclaimerPage()],
+              ),
+            ),
+            _buildBottomControls(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntroPage() {
+    return const Padding(
+      padding: EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Image.asset(
-            'assets/images/image.jpg',
-            fit: BoxFit.cover,
-            color: Colors.black.withOpacity(0.15),
-            colorBlendMode: BlendMode.darken,
+          Icon(
+            Icons.gavel_rounded, // Example icon
+            size: 100,
+            color: kButtonColor,
           ),
-          PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(42.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Welcome to LawGen",
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Learn about your legal rights and obligations.\nAsk and gain valuable information.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18, color: Colors.white70),
-                    ),
-                    const SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: _nextPage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Continue",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildPageIndicator(_currentPage == 0),
-                        _buildPageIndicator(_currentPage == 1),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CheckboxListTile(
-                      value: _agreementChecked,
-                      onChanged: (value) {
-                        setState(() {
-                          _agreementChecked = value ?? false;
-                        });
-                      },
-                      title: const Text(
-                        "I understand that this app is for educational purposes only and not legal advice.",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    const SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: _agreementChecked
-                          ? () => _finishOnboardingAndNavigate('/signin')
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Sign In",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _agreementChecked
-                          ? () => _finishOnboardingAndNavigate('/chat')
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Chat",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildPageIndicator(_currentPage == 0),
-                        _buildPageIndicator(_currentPage == 1),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          SizedBox(height: 40),
+          Text(
+            "Welcome to LawGen",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: kPrimaryTextColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          Text(
+            "Learn about your legal rights and obligations. Ask and gain valuable information.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: kSecondaryTextColor,
+              height: 1.5,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDisclaimerPage() {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            "Important Disclaimer",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: kPrimaryTextColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "The information provided by this app is for educational and informational purposes only. It is not a substitute for professional legal advice.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: kSecondaryTextColor,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 30),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _agreementChecked = !_agreementChecked;
+              });
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _agreementChecked,
+                  onChanged: (value) {
+                    setState(() {
+                      _agreementChecked = value ?? false;
+                    });
+                  },
+                  activeColor: kButtonColor,
+                ),
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12.0),
+                    child: Text(
+                      "I understand that this app is for educational purposes only and not legal advice.",
+                      style: TextStyle(color: kPrimaryTextColor, fontSize: 15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomControls() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Page indicators in the center
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              2,
+              (index) => _buildPageIndicator(index == _currentPage),
+            ),
+          ),
+          // Buttons aligned to the left and right
+          if (_currentPage == 0)
+            Align(
+              alignment: Alignment.centerRight,
+              child: _buildTextButton("Next", () {
+                _pageController.nextPage(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                );
+              }),
+            ),
+          if (_currentPage == 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildTextButton("Back", () {
+                  _pageController.previousPage(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                  );
+                }),
+                ElevatedButton(
+                  onPressed: _agreementChecked
+                      ? () => _finishOnboardingAndNavigate('/signin')
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kButtonColor,
+                    disabledBackgroundColor: kButtonColor.withOpacity(0.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text(
+                    "Get Started",
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageIndicator(bool isActive) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+      height: 8,
+      width: isActive ? 24 : 8,
+      decoration: BoxDecoration(
+        color: isActive ? kButtonColor : kShadowColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
+  Widget _buildTextButton(String text, VoidCallback onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: kButtonColor,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

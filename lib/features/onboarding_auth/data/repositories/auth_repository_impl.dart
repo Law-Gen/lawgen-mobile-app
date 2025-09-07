@@ -1,4 +1,7 @@
+// features/onboarding_auth/data/repositories/auth_repository_impl.dart
+
 import 'package:dartz/dartz.dart';
+import '../../../../core/errors/exception.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/otp.dart';
 import '../../domain/entities/user.dart';
@@ -16,18 +19,20 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
-  Future<Either<Failures, User>> signUp({
+  Future<Either<Failures, void>> signUp({
     required String full_name,
     required String email,
     required String password,
   }) async {
     try {
-      final user = await remoteDatasource.signUp(
+      // The remote datasource now returns Future<void> for signUp.
+      await remoteDatasource.signUp(
         full_name: full_name,
         email: email,
         password: password,
       );
-      return Right(user);
+      // On success, we return Right with a void value.
+      return const Right(null);
     } catch (e) {
       return Left(
         ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
@@ -54,23 +59,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failures, void>> logout() async {
-    try {
-      await remoteDatasource
-          .logout(); // Changed to remote datasource to align with its implementation
-      return Right(null);
-    } catch (e) {
-      return Left(
-        CacheFailure(message: e.toString().replaceAll('Exception: ', '')),
-      );
-    }
-  }
-
-  @override
   Future<Either<Failures, void>> forgetPassword({required String email}) async {
     try {
       await remoteDatasource.forgetPassword(email: email);
-      return Right(null);
+      return const Right(null);
     } catch (e) {
       return Left(
         ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
@@ -106,13 +98,38 @@ class AuthRepositoryImpl implements AuthRepository {
         token: token,
         newPassword: newPassword,
       );
-      return Right(null);
+      return const Right(null);
     } catch (e) {
       return Left(
         ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
       );
     }
   }
+
+  @override
+  Future<Either<Failures, void>> logout() async {
+    try {
+      await remoteDatasource.logout();
+      return const Right(null);
+    } catch (e) {
+      return Left(
+        CacheFailure(message: e.toString().replaceAll('Exception: ', '')),
+      );
+    }
+  }
+
+  @override
+  Future<bool> isLoggedIn() async {
+    try {
+      final tokens = await localDatasource.getTokens();
+      // A user is considered logged in if the access token exists and is not empty.
+      return tokens['accessToken']?.isNotEmpty ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- UNIMPLEMENTED METHODS (Keep your original logic here) ---
 
   @override
   Future<Either<Failures, User>> googleSignIn({
@@ -145,26 +162,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failures, void>> verifyPassword({
-    required String password,
-  }) async {
+  Future<Either<Failures, void>> signOut() async {
     try {
-      await remoteDatasource.verifyPassword(password: password);
-      return Right(null);
-    } catch (e) {
-      return Left(
-        ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
-      );
-    }
-  }
-
-  @override
-  Future<bool> isLoggedIn() async {
-    try {
-      final token = await localDatasource.getTokens();
-      return token != null && token.isNotEmpty;
-    } catch (e) {
-      return false;
+      // Call the local datasource to clear both tokens and user info
+      await localDatasource.clearTokens();
+      await localDatasource.clearUserInfo();
+      // Return Right(null) for a void success case
+      return const Right(null);
+    } on CacheException {
+      return Left(CacheFailure(message: 'Failed to clear user session.'));
     }
   }
 }

@@ -1,3 +1,5 @@
+// features/profile/presentation/bloc/profile_state.dart
+
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/profile.dart';
 
@@ -20,15 +22,16 @@ class ProfileLoaded extends ProfileState {
   List<Object?> get props => [profile];
 }
 
-// --- THIS IS THE FIX: ADD THIS NEW STATE CLASS ---
-// This state also holds the profile data, just like ProfileLoaded,
-// but it specifically signals that an update/save operation is in progress.
-// The UI will use this to show a loading indicator on the "Save" button
-// without losing the currently displayed profile data.
+// ✅ NEW STATE: This is emitted after a successful save.
+// It also contains the updated profile so the builder can react to it.
+class ProfileUpdateSuccess extends ProfileLoaded {
+  const ProfileUpdateSuccess(super.profile);
+}
+
+// This state is for showing the spinner *during* the update.
 class ProfileUpdating extends ProfileLoaded {
   const ProfileUpdating(super.profile);
 }
-// --- END OF FIX ---
 
 class ProfileError extends ProfileState {
   final String message;
