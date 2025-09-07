@@ -47,7 +47,10 @@ class GoogleSignInRequested extends AuthEvent {
   List<Object> get props => [authCode, codeVerifier];
 }
 
-class LogoutRequested extends AuthEvent {}
+class LogoutRequested extends AuthEvent {
+  @override
+  List<Object> get props => [];
+}
 
 class ForgetPasswordRequested extends AuthEvent {
   final String email;

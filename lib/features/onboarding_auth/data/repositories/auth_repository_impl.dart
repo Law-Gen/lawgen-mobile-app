@@ -1,6 +1,7 @@
 // features/onboarding_auth/data/repositories/auth_repository_impl.dart
 
 import 'package:dartz/dartz.dart';
+import '../../../../core/errors/exception.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/otp.dart';
 import '../../domain/entities/user.dart';
@@ -157,6 +158,19 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(
         ServerFailure(message: e.toString().replaceAll('Exception: ', '')),
       );
+    }
+  }
+
+  @override
+  Future<Either<Failures, void>> signOut() async {
+    try {
+      // Call the local datasource to clear both tokens and user info
+      await localDatasource.clearTokens();
+      await localDatasource.clearUserInfo();
+      // Return Right(null) for a void success case
+      return const Right(null);
+    } on CacheException {
+      return Left(CacheFailure(message: 'Failed to clear user session.'));
     }
   }
 }

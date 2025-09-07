@@ -72,7 +72,6 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _saveChanges(Profile currentProfile) {
-    // ✅ FIX: Translate UI display strings back to backend codes before saving.
     String? genderCode;
     if (_selectedGender == 'Male') genderCode = 'M';
     if (_selectedGender == 'Female') genderCode = 'F';
@@ -95,7 +94,12 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  // UPDATED: Now closes the bottom sheet before logging out.
   void _logout() {
+    // Ensure the bottom sheet is closed before dispatching the event
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
     context.read<AuthBloc>().add(LogoutRequested());
   }
 
@@ -104,7 +108,6 @@ class _ProfileViewState extends State<ProfileView> {
     emailController.text = profile.email;
     birthDateController.text = profile.birthDate ?? '';
 
-    // ✅ FIX: Translate backend codes into UI display strings before setting state.
     String? displayGender;
     if (profile.gender == 'M') displayGender = 'Male';
     if (profile.gender == 'F') displayGender = 'Female';
@@ -158,32 +161,38 @@ class _ProfileViewState extends State<ProfileView> {
             final isSaving = state is ProfileUpdating;
 
             return SafeArea(
-              child: Column(
-                children: [
-                  _buildTopBar(context),
-                  _buildProfilePicture(profile),
-                  const SizedBox(height: 12),
-                  Text(
-                    profile.full_name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: kPrimaryTextColor,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4.0,
+                  vertical: 12.0,
+                ),
+                child: Column(
+                  children: [
+                    _buildTopBar(context),
+                    _buildProfilePicture(profile),
+                    const SizedBox(height: 12),
+                    Text(
+                      profile.full_name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: kPrimaryTextColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    profile.email,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: kSecondaryTextColor,
+                    const SizedBox(height: 4),
+                    Text(
+                      profile.email,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: kSecondaryTextColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Expanded(child: _buildForm(context)),
-                  _buildActionButtons(context, profile, isSaving),
-                  _buildFooterButtons(context),
-                ],
+                    const SizedBox(height: 24),
+                    Expanded(child: _buildForm(context)),
+                    _buildActionButtons(context, profile, isSaving),
+                    // _buildFooterButtons(context),
+                  ],
+                ),
               ),
             );
           }
@@ -194,7 +203,64 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  // --- WIDGET BUILDER METHODS (Unchanged) ---
+  // --- NEW METHOD ---
+  // This function builds and displays the modern modal bottom sheet.
+  void _showOptionsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kCardBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: kShadowColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // The styled Logout Button
+              ElevatedButton.icon(
+                onPressed: _logout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kButtonColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.logout),
+                label: const Text(
+                  "Logout",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // A cancel button to dismiss the sheet
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: kSecondaryTextColor, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- UPDATED METHOD ---
   Widget _buildTopBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -215,7 +281,8 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           IconButton(
             icon: const Icon(Icons.more_vert, color: kPrimaryTextColor),
-            onPressed: () {},
+            // This now triggers the bottom sheet
+            onPressed: () => _showOptionsBottomSheet(context),
           ),
         ],
       ),
@@ -325,6 +392,7 @@ class _ProfileViewState extends State<ProfileView> {
               ),
             ),
           ),
+
           if (_isEditing) ...[
             const SizedBox(width: 10),
             IconButton(
@@ -344,14 +412,16 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  // --- UPDATED METHOD ---
   Widget _buildFooterButtons(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // The Row now just contains the premium button
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.start, // Aligned to the left
         children: [
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () {}, // Add navigation to premium page here
             icon: const Icon(
               Icons.workspace_premium_outlined,
               color: kButtonColor,
@@ -359,14 +429,6 @@ class _ProfileViewState extends State<ProfileView> {
             label: const Text(
               "Premium",
               style: TextStyle(color: kPrimaryTextColor),
-            ),
-          ),
-          TextButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            label: const Text(
-              "Logout",
-              style: TextStyle(color: Colors.redAccent),
             ),
           ),
         ],

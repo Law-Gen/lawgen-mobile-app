@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../domain/entities/legal_document.dart';
 import '../../catalog_injection.dart'; // Make sure this path is correct
 import '../../domain/entities/legal_group.dart';
 import '../bloc/legal_content_bloc.dart';
