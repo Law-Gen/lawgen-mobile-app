@@ -1,31 +1,34 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lawgen/app/dependency_injection.dart';
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
 
+import '../../../../app/dependency_injection.dart';
+import '../../../onboarding_auth/presentation/bloc/auth_bloc.dart';
+import '../../../onboarding_auth/presentation/bloc/auth_event.dart';
 import '../../domain/entities/profile.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
+
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<ProfileBloc>(
-          create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
-        ),
-        BlocProvider.value(value: sl<AuthBloc>()),
-      ],
+    return BlocProvider<ProfileBloc>(
+      create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
       child: const ProfileView(),
     );
   }
@@ -43,7 +46,6 @@ class _ProfileViewState extends State<ProfileView> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController birthDateController = TextEditingController();
 
-  // State variables for dropdowns
   String? _selectedGender;
   String? _selectedLanguage;
 
@@ -65,14 +67,12 @@ class _ProfileViewState extends State<ProfileView> {
       imageQuality: 80,
     );
     if (pickedFile != null) {
-      setState(() {
-        _pickedImageFile = File(pickedFile.path);
-      });
+      setState(() => _pickedImageFile = File(pickedFile.path));
     }
   }
 
   void _saveChanges(Profile currentProfile) {
-    // Map the display values back to the codes the backend expects
+    // ✅ FIX: Translate UI display strings back to backend codes before saving.
     String? genderCode;
     if (_selectedGender == 'Male') genderCode = 'M';
     if (_selectedGender == 'Female') genderCode = 'F';
@@ -83,7 +83,7 @@ class _ProfileViewState extends State<ProfileView> {
 
     final updatedProfile = Profile(
       id: currentProfile.id,
-      full_name: fullNameController.text,
+      full_name: fullNameController.text.trim(),
       email: currentProfile.email,
       gender: genderCode,
       birthDate: birthDateController.text,
@@ -93,46 +93,50 @@ class _ProfileViewState extends State<ProfileView> {
     context.read<ProfileBloc>().add(
       SaveProfile(updatedProfile, _pickedImageFile),
     );
-    setState(() => _isEditing = false);
   }
 
   void _logout() {
-    context.go('/signin');
+    context.read<AuthBloc>().add(LogoutRequested());
+  }
+
+  void _populateFields(Profile profile) {
+    fullNameController.text = profile.full_name;
+    emailController.text = profile.email;
+    birthDateController.text = profile.birthDate ?? '';
+
+    // ✅ FIX: Translate backend codes into UI display strings before setting state.
+    String? displayGender;
+    if (profile.gender == 'M') displayGender = 'Male';
+    if (profile.gender == 'F') displayGender = 'Female';
+
+    String? displayLanguage;
+    if (profile.languagePreference == 'En') displayLanguage = 'English';
+    if (profile.languagePreference == 'Am') displayLanguage = 'Amharic';
+
+    setState(() {
+      _pickedImageFile = null;
+      _selectedGender = displayGender;
+      _selectedLanguage = displayLanguage;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: kBackgroundColor,
       body: BlocConsumer<ProfileBloc, ProfileState>(
         listener: (context, state) {
-          if (state is ProfileLoaded && state is! ProfileUpdating) {
-            if (_isEditing) {
-              setState(() {
-                _isEditing = false;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Profile updated successfully!"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            }
-            final profile = state.profile;
-            fullNameController.text = profile.full_name;
-            emailController.text = profile.email;
-            birthDateController.text = profile.birthDate ?? '';
-            setState(() {
-              _pickedImageFile = null;
-              // Map codes from the server to display values for the UI
-              if (profile.gender == 'F') _selectedGender = 'Female';
-              if (profile.gender == 'M') _selectedGender = 'Male';
-
-              if (profile.languagePreference == 'En')
-                _selectedLanguage = 'English';
-              if (profile.languagePreference == 'Am')
-                _selectedLanguage = 'Amharic';
-            });
+          if (state is ProfileUpdateSuccess) {
+            _populateFields(state.profile);
+            setState(() => _isEditing = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Profile updated successfully!"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is ProfileLoaded) {
+            _populateFields(state.profile);
           } else if (state is ProfileError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -143,195 +147,232 @@ class _ProfileViewState extends State<ProfileView> {
           }
         },
         builder: (context, state) {
-          if (state is! ProfileLoaded) {
-            return const Center(child: CircularProgressIndicator());
+          if (state is ProfileInitial || state is ProfileLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: kButtonColor),
+            );
           }
 
-          final profile = state.profile;
-          final isSaving = state is ProfileUpdating;
+          if (state is ProfileLoaded) {
+            final profile = state.profile;
+            final isSaving = state is ProfileUpdating;
 
-          return SafeArea(
-            child: Column(
-              children: [
-                // Top Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => context.go('/chat'),
-                      ),
-                      SvgPicture.asset('assets/logo/logo.svg', height: 32),
-                    ],
-                  ),
-                ),
-                // Profile Picture
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey.shade200,
-                      backgroundImage: _pickedImageFile != null
-                          ? FileImage(_pickedImageFile!)
-                          : (profile.profilePictureUrl != null &&
-                                    profile.profilePictureUrl!.isNotEmpty
-                                ? NetworkImage(profile.profilePictureUrl!)
-                                : const AssetImage(
-                                        "assets/images/profile_placeholder.png",
-                                      )
-                                      as ImageProvider),
+            return SafeArea(
+              child: Column(
+                children: [
+                  _buildTopBar(context),
+                  _buildProfilePicture(profile),
+                  const SizedBox(height: 12),
+                  Text(
+                    profile.full_name,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: kPrimaryTextColor,
                     ),
-                    if (_isEditing)
-                      GestureDetector(
-                        onTap: _pickProfileImage,
-                        child: const CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Color(0xFF0A1D37),
-                          child: Icon(
-                            Icons.edit,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  profile.full_name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-                const SizedBox(height: 24),
-                // Form Fields
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      _profileItem(
-                        label: "Full Name",
-                        controller: fullNameController,
-                        icon: Icons.person_outline,
-                      ),
-                      _profileItem(
-                        label: "Email",
-                        controller: emailController,
-                        icon: Icons.email_outlined,
-                        editable: false,
-                      ),
-                      _genderDropdown(),
-                      _profileItem(
-                        label: "Birthdate",
-                        controller: birthDateController,
-                        icon: Icons.calendar_today_outlined,
-                        onTap: _isEditing
-                            ? () => _selectBirthDate(context)
-                            : null,
-                      ),
-                      _languageDropdown(),
-                    ],
+                  const SizedBox(height: 4),
+                  Text(
+                    profile.email,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: kSecondaryTextColor,
+                    ),
                   ),
-                ),
-                // Buttons
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: isSaving
-                              ? null
-                              : (_isEditing
-                                    ? () => _saveChanges(profile)
-                                    : () => setState(() => _isEditing = true)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A1D37),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: isSaving
-                              ? Container(
-                                  width: 24,
-                                  height: 24,
-                                  padding: const EdgeInsets.all(2.0),
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 3,
-                                  ),
-                                )
-                              : Icon(
-                                  _isEditing
-                                      ? Icons.save_alt_outlined
-                                      : Icons.edit_outlined,
-                                ),
-                          label: Text(
-                            _isEditing ? "Save Changes" : "Edit Profile",
-                          ),
-                        ),
-                      ),
-                      if (_isEditing) ...[
-                        const SizedBox(width: 10),
-                        IconButton(
-                          onPressed: () {
-                            context.read<ProfileBloc>().add(LoadProfile());
-                            setState(() => _isEditing = false);
-                          },
-                          icon: const Icon(Icons.cancel_outlined),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.grey.shade200,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => context.go('/subscription'),
-                        icon: const Icon(
-                          Icons.workspace_premium_outlined,
-                          color: Colors.amber,
-                        ),
-                        label: const Text(
-                          "Premium",
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _logout,
-                        icon: const Icon(Icons.logout, color: Colors.redAccent),
-                        label: const Text(
-                          "Logout",
-                          style: TextStyle(color: Colors.redAccent),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
+                  const SizedBox(height: 24),
+                  Expanded(child: _buildForm(context)),
+                  _buildActionButtons(context, profile, isSaving),
+                  _buildFooterButtons(context),
+                ],
+              ),
+            );
+          }
+
+          return const Center(child: Text("Could not load profile."));
         },
       ),
     );
   }
 
-  // --- HELPER METHODS ---
+  // --- WIDGET BUILDER METHODS (Unchanged) ---
+  Widget _buildTopBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: kPrimaryTextColor),
+            onPressed: () => context.go('/chat'),
+          ),
+          const Text(
+            "Profile",
+            style: TextStyle(
+              color: kPrimaryTextColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: kPrimaryTextColor),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfilePicture(Profile profile) {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: kShadowColor.withOpacity(0.5),
+          backgroundImage: _pickedImageFile != null
+              ? FileImage(_pickedImageFile!)
+              : (profile.profilePictureUrl != null &&
+                        profile.profilePictureUrl!.isNotEmpty
+                    ? NetworkImage(profile.profilePictureUrl!)
+                    : const AssetImage("assets/images/profile_placeholder.png")
+                          as ImageProvider),
+        ),
+        if (_isEditing)
+          GestureDetector(
+            onTap: _pickProfileImage,
+            child: const CircleAvatar(
+              radius: 20,
+              backgroundColor: kButtonColor,
+              child: Icon(Icons.edit, size: 20, color: Colors.white),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      children: [
+        _profileItem(
+          label: "Full Name",
+          controller: fullNameController,
+          icon: Icons.person_outline,
+        ),
+        _profileItem(
+          label: "Email",
+          controller: emailController,
+          icon: Icons.email_outlined,
+          editable: false,
+        ),
+        _genderDropdown(),
+        _profileItem(
+          label: "Birthdate",
+          controller: birthDateController,
+          icon: Icons.calendar_today_outlined,
+          onTap: _isEditing ? () => _selectBirthDate(context) : null,
+        ),
+        _languageDropdown(),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(
+    BuildContext context,
+    Profile profile,
+    bool isSaving,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: isSaving
+                  ? null
+                  : (_isEditing
+                        ? () => _saveChanges(profile)
+                        : () => setState(() => _isEditing = true)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kButtonColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              icon: isSaving
+                  ? Container(
+                      width: 20,
+                      height: 20,
+                      padding: const EdgeInsets.all(2.0),
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Icon(
+                      _isEditing
+                          ? Icons.save_alt_outlined
+                          : Icons.edit_outlined,
+                    ),
+              label: Text(
+                _isEditing ? "Save Changes" : "Edit Profile",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          if (_isEditing) ...[
+            const SizedBox(width: 10),
+            IconButton(
+              onPressed: () {
+                context.read<ProfileBloc>().add(LoadProfile());
+                setState(() => _isEditing = false);
+              },
+              icon: const Icon(Icons.close),
+              style: IconButton.styleFrom(
+                backgroundColor: kShadowColor.withOpacity(0.7),
+                foregroundColor: kPrimaryTextColor,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterButtons(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          TextButton.icon(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.workspace_premium_outlined,
+              color: kButtonColor,
+            ),
+            label: const Text(
+              "Premium",
+              style: TextStyle(color: kPrimaryTextColor),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            label: const Text(
+              "Logout",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _selectBirthDate(BuildContext context) async {
     DateTime initialDate =
@@ -343,7 +384,7 @@ class _ProfileViewState extends State<ProfileView> {
       lastDate: DateTime.now(),
       builder: (context, child) => Theme(
         data: ThemeData.light().copyWith(
-          colorScheme: const ColorScheme.light(primary: Color(0xFF0A1D37)),
+          colorScheme: const ColorScheme.light(primary: kButtonColor),
         ),
         child: child!,
       ),
@@ -351,6 +392,35 @@ class _ProfileViewState extends State<ProfileView> {
     if (picked != null) {
       birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
     }
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: kSecondaryTextColor),
+      fillColor: _isEditing ? kCardBackgroundColor : kBackgroundColor,
+      filled: true,
+      prefixIcon: Icon(icon, color: kButtonColor),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: _isEditing
+            ? BorderSide(color: kShadowColor)
+            : BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: kButtonColor, width: 2),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+    );
   }
 
   Widget _profileItem({
@@ -370,37 +440,9 @@ class _ProfileViewState extends State<ProfileView> {
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
-          color: Color(0xFF0A1D37),
+          color: kPrimaryTextColor,
         ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white),
-          fillColor: _isEditing && editable
-              ? Colors.white
-              : Colors.grey.shade100,
-          filled: true,
-          prefixIcon: Icon(icon, color: const Color(0xFF0A1D37)),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
-            horizontal: 16,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF0A1D37), width: 2),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-        ),
+        decoration: _inputDecoration(label, icon),
       ),
     );
   }
@@ -419,24 +461,9 @@ class _ProfileViewState extends State<ProfileView> {
         onChanged: _isEditing
             ? (String? newValue) => setState(() => _selectedGender = newValue)
             : null,
-        decoration: InputDecoration(
-          labelText: 'Gender',
-          prefixIcon: const Icon(Icons.wc_outlined, color: Color(0xFF0A1D37)),
-          fillColor: _isEditing ? Colors.white : Colors.grey.shade100,
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-        ),
+        decoration: _inputDecoration('Gender', Icons.wc_outlined),
+        style: const TextStyle(fontSize: 16, color: kPrimaryTextColor),
+        iconEnabledColor: kButtonColor,
       ),
     );
   }
@@ -455,27 +482,9 @@ class _ProfileViewState extends State<ProfileView> {
         onChanged: _isEditing
             ? (String? newValue) => setState(() => _selectedLanguage = newValue)
             : null,
-        decoration: InputDecoration(
-          labelText: 'Language',
-          prefixIcon: const Icon(
-            Icons.language_outlined,
-            color: Color(0xFF0A1D37),
-          ),
-          fillColor: _isEditing ? Colors.white : Colors.grey.shade100,
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-        ),
+        decoration: _inputDecoration('Language', Icons.language_outlined),
+        style: const TextStyle(fontSize: 16, color: kPrimaryTextColor),
+        iconEnabledColor: kButtonColor,
       ),
     );
   }

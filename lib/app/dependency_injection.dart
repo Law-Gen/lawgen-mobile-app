@@ -50,7 +50,10 @@ Future<void> init() async {
 
   if (!sl.isRegistered<AuthRemoteDatasource>()) {
     sl.registerLazySingleton<AuthRemoteDatasource>(
-      () => AuthRemoteDatasourceImpl(client: sl(), storage: sl()),
+      () => AuthRemoteDatasourceImpl(
+        client: sl(),
+        localDatasource: sl(),
+      ), // <- FIXED
     );
   }
 

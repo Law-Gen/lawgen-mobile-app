@@ -1,7 +1,10 @@
+// features/onboarding_auth/domain/usecases/verifyotp_usecase.dart
+
 import 'package:dartz/dartz.dart';
+import '../../../../core/errors/failures.dart';
 import '../entities/otp.dart';
 import '../repositories/auth_repository.dart';
-import '../../../../core/errors/failures.dart';
+
 class VerifyOTPUseCase {
   final AuthRepository repository;
 

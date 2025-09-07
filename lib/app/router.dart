@@ -1,7 +1,13 @@
+// router.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/LegalAidDirectory/presentation/pages/legal_aid_directory_page.dart';
+import '../features/chat/presentation/pages/chat_page.dart';
+import '../features/catalog/presentation/pages/legal_articles_page.dart';
+import '../features/catalog/presentation/pages/legal_categories_page.dart';
 import '../features/onboarding_auth/presentation/pages/forget_password_page.dart';
 import '../features/onboarding_auth/presentation/pages/onboarding_page.dart';
 import '../features/onboarding_auth/presentation/pages/otp_page.dart';
@@ -10,20 +16,20 @@ import '../features/onboarding_auth/presentation/pages/sign_in_page.dart';
 import '../features/onboarding_auth/presentation/pages/sign_up_page.dart';
 import '../features/onboarding_auth/presentation/pages/success_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import '../features/catalog/presentation/pages/legal_articles_page.dart';
-import '../features/catalog/presentation/pages/legal_categories_page.dart';
 import '../features/quize/domain/entities/quize.dart';
 import '../features/quize/presentation/pages/question_page.dart';
 import '../features/quize/presentation/pages/quize_home_page.dart';
 import '../features/quize/presentation/pages/quize_result_page.dart';
 
-import '../features/chat/presentation/pages/chat_page.dart';
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
 
-// --- Placeholder Screens ---
-// In your actual app, you would import your real screen widgets here.
-// These are placeholders to make the router code runnable.
+// --- Placeholder Screens (Keep as is) ---
 class PlaceholderScreen extends StatelessWidget {
   final String title;
   final Widget? child;
@@ -49,33 +55,54 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
+// --- Main App Shell with Bottom Navigation (Updated without packages) ---
 class MainAppShell extends StatelessWidget {
   final Widget child;
   const MainAppShell({super.key, required this.child});
-  // In a real app, this would be your Scaffold with a BottomNavigationBar
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color.fromARGB(233, 238, 236, 231),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Color.fromARGB(255, 155, 113, 87),
-        elevation: 20,
-        unselectedItemColor: Color.fromARGB(121, 176, 149, 133),
+        // --- Theming ---
+        backgroundColor:
+            kCardBackgroundColor, // A clean white background for the bar
+        selectedItemColor:
+            kButtonColor, // Active icon and label color from your theme
+        unselectedItemColor:
+            kSecondaryTextColor, // Inactive icon and label color
+        // --- Style and Layout ---
+        type: BottomNavigationBarType
+            .fixed, // This ensures all labels are always visible
+        elevation: 10, // Adds a subtle shadow for depth
+        showUnselectedLabels: true, // Explicitly ensure labels are always shown
+        // --- Functionality ---
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
+
+        // --- Items and Icons ---
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.bubble_chart_outlined),
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble), // Filled icon when active
             label: 'Chat',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.my_library_books_outlined),
+            icon: Icon(Icons.library_books_outlined),
+            activeIcon: Icon(Icons.library_books), // Filled icon when active
             label: 'Catalog',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizzes'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_outlined),
+            activeIcon: Icon(Icons.quiz), // Filled icon when active
+            label: 'Quizzes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person), // Filled icon when active
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -108,13 +135,11 @@ class MainAppShell extends StatelessWidget {
   }
 }
 
-// --- GoRouter Configuration ---
-
+// --- GoRouter Configuration (No Changes Below) ---
 class AppRouter {
-  // Mock authentication state. In a real app, you would get this from your auth provider/state manager.
   final ValueNotifier<bool> isAuthenticated = ValueNotifier(false);
-  // Change to `true` to test logged-in routes
   final ValueNotifier<bool> hasSeenOnboarding = ValueNotifier(false);
+
   AppRouter() {
     _loadOnboardingStatus();
   }
@@ -129,11 +154,10 @@ class AppRouter {
     await prefs.setBool('hasSeenOnboarding', true);
     hasSeenOnboarding.value = true;
   }
-  // Change to `true` to skip onboarding
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/quiz',
-    refreshListenable: hasSeenOnboarding,
+    initialLocation: hasSeenOnboarding.value ? '/' : '/onboarding',
+    refreshListenable: Listenable.merge([isAuthenticated, hasSeenOnboarding]),
     routes: [
       // --- Onboarding ---
       GoRoute(
@@ -142,8 +166,8 @@ class AppRouter {
       ),
 
       // --- Authentication Routes ---
-      GoRoute(path: '/signin', builder: (context, state) => SignInPage()),
-      GoRoute(path: '/signup', builder: (context, state) => SignUpPage()),
+      GoRoute(path: '/signin', builder: (context, state) => const SignInPage()),
+      GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
       GoRoute(
         path: '/forgotpassword',
         builder: (context, state) => const ForgotPasswordPage(),
@@ -160,17 +184,16 @@ class AppRouter {
         builder: (context, state) => const SuccessResetPage(),
       ),
       GoRoute(
-        // Correcting the path to accept a parameter for the reset token
         path: '/resetpassword/:resetToken',
         builder: (context, state) =>
             ResetPasswordPage(resetToken: state.pathParameters['resetToken']!),
       ),
 
-      // --- Guest/Anonymous Routes ---
+      // --- Guest/Anonymous Route ---
       GoRoute(
         path: '/',
-        // how can i tell the chatpage that the user is not logged in yet
-        builder: (context, state) => ChatPage(),
+        builder: (context, state) =>
+            ChatPage(), // This is the non-shelled chat page for guests.
       ),
 
       // --- Logged-In User Routes with Bottom Navigation Shell ---
@@ -184,13 +207,11 @@ class AppRouter {
             path: '/topics',
             builder: (context, state) => LegalCategoriesPage.withBloc(),
             routes: [
-              // Nested route for topic details
               GoRoute(
                 path: ':topicId',
                 builder: (context, state) {
                   final categoryId = state.pathParameters['topicId']!;
                   final categoryName = state.extra as String;
-
                   return LegalArticlesPage.withBloc(
                     categoryId: categoryId,
                     categoryName: categoryName,
@@ -203,22 +224,18 @@ class AppRouter {
             path: '/quiz',
             builder: (context, state) => QuizHomePage.withBloc(),
             routes: [
-              // Nested route for a specific quiz
               GoRoute(
-                path: ':quizId', // e.g., /quiz/employment-law-quiz
+                path: ':quizId',
                 builder: (context, state) =>
                     QuizQuestionPage.withBloc(state.pathParameters['quizId']!),
-
                 routes: [
-                  // Nested route for quiz results
                   GoRoute(
-                    path: '/results',
+                    path: 'results',
                     builder: (context, state) {
                       final data = state.extra as Map<String, dynamic>;
                       final quiz = data['quiz'] as Quiz;
                       final userAnswers =
                           data['userAnswers'] as Map<String, String>;
-
                       return QuizResultPage(
                         quiz: quiz,
                         userAnswers: userAnswers,
@@ -236,78 +253,58 @@ class AppRouter {
         ],
       ),
 
-      // --- Standalone Routes (Without Bottom Navigation) ---
+      // --- Standalone Routes ---
       GoRoute(
         path: '/legal-aid',
         builder: (context, state) => LegalAidDirectoryPage.withBloc(),
-      ),
-      GoRoute(
-        path: '/subscriptions',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Subscription Plans'),
-      ),
-
-      // --- Admin Panel Routes (Could have its own ShellRoute) ---
-      GoRoute(
-        path: '/admin/dashboard',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Admin Dashboard'),
-      ),
-      GoRoute(
-        path: '/admin/users',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Admin User Management'),
-      ),
-      GoRoute(
-        path: '/admin/quizzes',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Admin Quizzes'),
-      ),
-      GoRoute(
-        path: '/admin/content',
-        builder: (context, state) =>
-            const PlaceholderScreen(title: 'Admin Content Management'),
       ),
     ],
 
     // --- Redirect Logic ---
     redirect: (context, state) {
-      final bool isLoggingIn =
-          state.uri.toString() == '/signin' ||
-          state.uri.toString() == '/signup';
-      //final bool isOnboarding = state.uri.toString() == '/onboarding';
+      final bool seenOnboarding = hasSeenOnboarding.value;
+      final bool loggedIn = isAuthenticated.value;
+      final String location = state.uri.toString();
 
-      // If the user hasn't seen onboarding, redirect them there first.
-      final isOnboarding = state.uri.toString() == '/onboarding';
-      if (!hasSeenOnboarding.value && !isOnboarding && !isLoggingIn) {
+      final bool isOnboarding = location == '/onboarding';
+      final bool isAuthenticating =
+          location == '/signin' || location == '/signup';
+
+      // 1. Onboarding Logic
+      if (!seenOnboarding && !isOnboarding) {
         return '/onboarding';
       }
-      if (hasSeenOnboarding.value && isOnboarding) {
-        return isAuthenticated.value ? '/chat' : '/';
+      if (seenOnboarding && isOnboarding) {
+        // If they have seen onboarding and try to go there, send them to the root.
+        return '/';
       }
 
-      // If the user is not authenticated and is trying to access a protected route,
-      // redirect them to the sign-in page.
-      // final isProtected =
-      //     state.uri.toString().startsWith('/chat') ||
-      //     state.uri.toString().startsWith('/profile') ||
-      //     state.uri.toString().startsWith('/admin');
+      // ✅  THIS IS THE FIX
+      // If the user is logged in and tries to go to the root guest page,
+      // redirect them to the main authenticated page inside the shell.
+      if (loggedIn && location == '/') {
+        return '/chat';
+      }
 
-      // if (!isAuthenticated && isProtected) {
-      //   return '/signin';
-      // }
+      // 2. Authentication Logic
+      final isProtected =
+          location.startsWith('/profile') || location.startsWith('/admin');
+      if (!loggedIn && isProtected) {
+        return '/signin';
+      }
 
-      // // If the user is already authenticated and tries to go to the sign-in/sign-up page,
-      // // redirect them to the logged-in chat screen.
-      // if (isAuthenticated && isLoggingIn) {
-      //   return '/chat';
-      // }
+      if (loggedIn && isAuthenticating) {
+        return '/chat';
+      }
 
-      // No redirect needed.
+      if (!loggedIn && location == '/chat') {
+        return '/signin';
+      }
+
+      // No redirect needed
       return null;
     },
 
-    // --- Error Handling ---
     errorBuilder: (context, state) =>
         const PlaceholderScreen(title: '404 - Page Not Found'),
   );
