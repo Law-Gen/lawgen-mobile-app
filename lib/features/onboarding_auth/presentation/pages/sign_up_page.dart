@@ -1,5 +1,3 @@
-// features/onboarding_auth/presentation/pages/sign_up_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +8,14 @@ import 'package:pkce/pkce.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -36,11 +42,9 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  // --- Logic for Email/Password Sign-Up ---
+  // --- LOGIC (UNCHANGED) ---
   void _signUp() {
-    // First, check if the form is valid
     if (_formKey.currentState?.validate() ?? false) {
-      // If valid, dispatch the event to the AuthBloc
       context.read<AuthBloc>().add(
         SignUpRequested(
           full_name: fullNameController.text.trim(),
@@ -51,7 +55,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  // --- Logic for Google Sign-In ---
   Future<void> _handleGoogleSignIn() async {
     try {
       final pkcePair = PkcePair.generate();
@@ -62,7 +65,7 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // User cancelled the flow
+      if (googleUser == null) return;
 
       final auth = await googleUser.authentication;
       final serverAuthCode = auth.serverAuthCode;
@@ -96,16 +99,15 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  // --- Navigation Methods ---
   void _navigateToSignIn() {
-    // This is only used for the "Already have an account?" text button.
     context.go('/signin');
   }
 
+  // --- UI AND STYLING (UPDATED) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: kBackgroundColor, // UPDATED
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -126,7 +128,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
             );
           } else if (state is Authenticated) {
-            // Also handle successful Google Sign-In from this page
             context.go('/chat');
           }
         },
@@ -136,35 +137,43 @@ class _SignUpPageState extends State<SignUpPage> {
 
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14.0,
+                  vertical: 4.0,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: _navigateToSignIn,
-                          ),
-                          SvgPicture.asset(
-                            'assets/logo/logo.svg',
-                            height: 32,
-                            width: 32,
-                          ),
-                        ],
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: kPrimaryTextColor,
+                          ), // UPDATED
+                          onPressed: _navigateToSignIn,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Welcome to LawGen',
+                        'Create an Account', // UPDATED
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: kPrimaryTextColor, // UPDATED
                             ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Start your journey with us', // UPDATED
+                        style: TextStyle(
+                          color: kSecondaryTextColor,
+                          fontSize: 16,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
@@ -222,16 +231,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
                       // Sign Up Button
                       ElevatedButton(
-                        // ✅ FIX: Changed from _navigateToSignIn to _signUp
-                        // ✅ IMPROVEMENT: Button is disabled during loading state
                         onPressed: isLoading ? null : _signUp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A1D37),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
+                        style: _primaryButtonStyle(), // UPDATED
                         child: isLoading
                             ? const SizedBox(
                                 height: 22,
@@ -245,6 +246,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 'Sign Up',
                                 style: TextStyle(
                                   fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
                               ),
@@ -254,46 +256,39 @@ class _SignUpPageState extends State<SignUpPage> {
                       // OR Separator
                       Row(
                         children: const [
-                          Expanded(child: Divider()),
+                          Expanded(
+                            child: Divider(color: kShadowColor),
+                          ), // UPDATED
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16.0),
-                            child: Text('OR'),
+                            child: Text(
+                              'OR',
+                              style: TextStyle(color: kSecondaryTextColor),
+                            ), // UPDATED
                           ),
-                          Expanded(child: Divider()),
+                          Expanded(
+                            child: Divider(color: kShadowColor),
+                          ), // UPDATED
                         ],
                       ),
                       const SizedBox(height: 24),
 
                       // Google Button
-                      OutlinedButton(
-                        onPressed: isLoading
-                            ? null
-                            : _handleGoogleSignIn, // ✅ Wired up Google Sign In
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFFD8DADC)),
-                          ),
+                      OutlinedButton.icon(
+                        onPressed: isLoading ? null : _handleGoogleSignIn,
+                        style: _secondaryButtonStyle(), // UPDATED
+                        icon: Image.asset(
+                          'assets/logo/google.jpg',
+                          height: 24,
+                          width: 24,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/logo/google.jpg',
-                              height: 24,
-                              width: 24,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Continue with Google',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
+                        label: const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: kPrimaryTextColor, // UPDATED
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -302,12 +297,20 @@ class _SignUpPageState extends State<SignUpPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text("Already have an account? "),
+                          const Text(
+                            "Already have an account? ",
+                            style: TextStyle(
+                              color: kPrimaryTextColor,
+                            ), // UPDATED
+                          ),
                           TextButton(
-                            onPressed: _navigateToSignIn,
+                            onPressed: isLoading ? null : _navigateToSignIn,
                             child: const Text(
                               'Sign In',
-                              style: TextStyle(color: Colors.blueAccent),
+                              style: TextStyle(
+                                color: kButtonColor, // UPDATED
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -323,37 +326,50 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      fillColor: Colors.white,
-      filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFD8DADC)),
-      ),
-      prefixIcon: Icon(icon),
-    );
-  }
+  // --- HELPER STYLING METHODS (UPDATED) ---
 
-  InputDecoration _passwordDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      fillColor: Colors.white,
-      filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFD8DADC)),
-      ),
-      prefixIcon: const Icon(Icons.lock_outline),
-      suffixIcon: IconButton(
-        icon: Icon(
-          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+  InputDecoration _inputDecoration(String label, IconData icon) =>
+      InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: kSecondaryTextColor),
+        prefixIcon: Icon(icon, color: kButtonColor),
+        filled: true,
+        fillColor: kCardBackgroundColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        onPressed: () {
-          setState(() => _isPasswordVisible = !_isPasswordVisible);
-        },
-      ),
-    );
-  }
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: kButtonColor, width: 2),
+        ),
+      );
+
+  InputDecoration _passwordDecoration(String label) =>
+      _inputDecoration(label, Icons.lock_outline).copyWith(
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: kSecondaryTextColor,
+          ),
+          onPressed: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
+        ),
+      );
+
+  ButtonStyle _primaryButtonStyle() => ElevatedButton.styleFrom(
+    backgroundColor: kButtonColor,
+    foregroundColor: Colors.white,
+    elevation: 4,
+    shadowColor: kShadowColor,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+  );
+
+  ButtonStyle _secondaryButtonStyle() => OutlinedButton.styleFrom(
+    backgroundColor: kCardBackgroundColor,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+    side: const BorderSide(color: kShadowColor),
+  );
 }

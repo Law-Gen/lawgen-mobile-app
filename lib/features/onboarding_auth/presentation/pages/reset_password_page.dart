@@ -6,6 +6,14 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
 class ResetPasswordPage extends StatefulWidget {
   final String resetToken;
   const ResetPasswordPage({super.key, required this.resetToken});
@@ -30,6 +38,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     super.dispose();
   }
 
+  // --- LOGIC (UNCHANGED) ---
   void _onReset() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
@@ -53,15 +62,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     return null;
   }
 
+  // --- UI AND STYLING (UPDATED) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: kBackgroundColor, // UPDATED
       body: SafeArea(
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is PasswordResetSuccess) {
-              // On success, navigate to the success page
               context.go('/successreset');
             } else if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -82,32 +91,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.black,
-                          ),
-                          onPressed: () => context.go('/signin'),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: kPrimaryTextColor, // UPDATED
                         ),
-                        SvgPicture.asset('assets/logo/logo.svg', height: 32),
-                      ],
+                        onPressed: () => context.go('/signin'),
+                      ),
                     ),
                     const SizedBox(height: 32),
-                    const Text(
+                    Text(
                       "Reset Password",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: kPrimaryTextColor, // UPDATED
+                          ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
                     const Text(
                       "Enter your new password and confirm it below.",
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: kSecondaryTextColor, // UPDATED
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 40),
@@ -117,20 +127,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       controller: _passwordController,
                       obscureText: !_passwordVisible,
                       validator: _validatePassword,
-                      decoration: InputDecoration(
-                        labelText: "New Password",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _passwordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () => setState(
-                            () => _passwordVisible = !_passwordVisible,
-                          ),
+                      decoration: _passwordDecoration(
+                        "New Password",
+                        _passwordVisible,
+                        () => setState(
+                          () => _passwordVisible = !_passwordVisible,
                         ),
                       ),
                     ),
@@ -141,55 +142,38 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       controller: _confirmPasswordController,
                       obscureText: !_confirmPasswordVisible,
                       validator: _validateConfirmPassword,
-                      decoration: InputDecoration(
-                        labelText: "Confirm Password",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _confirmPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () => setState(
-                            () => _confirmPasswordVisible =
-                                !_confirmPasswordVisible,
-                          ),
+                      decoration: _passwordDecoration(
+                        "Confirm Password",
+                        _confirmPasswordVisible,
+                        () => setState(
+                          () => _confirmPasswordVisible =
+                              !_confirmPasswordVisible,
                         ),
                       ),
                     ),
                     const SizedBox(height: 40),
 
                     // Reset button
-                    SizedBox(
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _onReset,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A1D37),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        // FIX: The child is now conditional based on the loading state
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 3,
-                                ),
-                              )
-                            : const Text(
-                                "Reset Password",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
+                    ElevatedButton(
+                      onPressed: isLoading ? null : _onReset,
+                      style: _primaryButtonStyle(),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
                               ),
-                      ),
+                            )
+                          : const Text(
+                              "Reset Password",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -200,4 +184,46 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ),
     );
   }
+
+  // --- HELPER STYLING METHODS (NEW) ---
+
+  InputDecoration _inputDecoration(String label, IconData icon) =>
+      InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: kSecondaryTextColor),
+        prefixIcon: Icon(icon, color: kButtonColor),
+        filled: true,
+        fillColor: kCardBackgroundColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: kButtonColor, width: 2),
+        ),
+      );
+
+  InputDecoration _passwordDecoration(
+    String label,
+    bool isVisible,
+    VoidCallback toggleVisibility,
+  ) => _inputDecoration(label, Icons.lock_outline).copyWith(
+    suffixIcon: IconButton(
+      icon: Icon(
+        isVisible ? Icons.visibility : Icons.visibility_off,
+        color: kSecondaryTextColor,
+      ),
+      onPressed: toggleVisibility,
+    ),
+  );
+
+  ButtonStyle _primaryButtonStyle() => ElevatedButton.styleFrom(
+    backgroundColor: kButtonColor,
+    foregroundColor: Colors.white,
+    elevation: 4,
+    shadowColor: kShadowColor,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+  );
 }
