@@ -1,51 +1,35 @@
-import 'package:hive/hive.dart';
-
 import '../../domain/entities/message.dart';
+import 'source_model.dart';
 
-part 'message_model.g.dart';
+class MessageModel extends Message {
+  const MessageModel({
+    required String id,
+    required String sessionId,
+    required String type,
+    required String content,
+    List<SourceModel>? sources,
+    required DateTime createdAt,
+  }) : super(
+         id: id,
+         sessionId: sessionId,
+         type: type,
+         content: content,
+         sources: sources,
+         createdAt: createdAt,
+       );
 
-@HiveType(typeId: 2)
-enum MessageSender {
-  @HiveField(0)
-  user,
-  @HiveField(1)
-  ai,
-}
-
-@HiveType(typeId: 3)
-class MessageModel {
-  @HiveField(0)
-  final String id; // uuid
-  @HiveField(1)
-  final MessageSender sender;
-  @HiveField(2)
-  final String content;
-  @HiveField(3)
-  final DateTime createdAt;
-
-  MessageModel({
-    required this.id,
-    required this.sender,
-    required this.content,
-    required this.createdAt,
-  });
-
-  MessageModel copyWith({
-    String? id,
-    MessageSender? sender,
-    String? content,
-    DateTime? createdAt,
-  }) => MessageModel(
-    id: id ?? this.id,
-    sender: sender ?? this.sender,
-    content: content ?? this.content,
-    createdAt: createdAt ?? this.createdAt,
-  );
-  // Convert MessageModel to Message entity
-  Message toEntity() {
-    return Message(
-      role: sender == MessageSender.user ? 'user' : 'ai',
-      content: content,
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
+    return MessageModel(
+      id: json['id'],
+      sessionId: json['session_id'],
+      type: json['type'],
+      content: json['content'],
+      sources: json['sources'] != null
+          ? (json['sources'] as List)
+                .map((source) => SourceModel.fromJson(source))
+                .toList()
+          : null,
+      createdAt: DateTime.parse(json['created_at']),
     );
   }
 }

@@ -1,163 +1,71 @@
-import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../../chat_dependency.dart';
 import '../bloc/chat_bloc.dart';
-import '../widgets/chat_drawer.dart';
-import '../../../onboarding_auth/presentation/bloc/auth_bloc.dart';
-import '../../../onboarding_auth/presentation/bloc/auth_state.dart';
-import '../widgets/suggestion_panel.dart';
-import '../widgets/message_input.dart';
-import '../../domain/entities/message.dart';
+import '../utils/design_constants.dart';
+import '../widgets/message_bubble.dart';
 
-class ChatPage extends StatefulWidget {
+// Helper class to adapt our byte stream for the just_audio player
+class _StreamAudioSource extends StreamAudioSource {
+  final Stream<List<int>> _stream;
+  _StreamAudioSource(this._stream) : super(tag: 'voice-response');
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    return StreamAudioResponse(
+      sourceLength: null, // We don't know the length of a live stream
+      contentLength: null,
+      offset: 0,
+      stream: _stream,
+      contentType: 'audio/mpeg',
+    );
+  }
+}
+
+class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => chatsl<ChatBloc>()..add(LoadChatHistory()),
+      child: const ChatScreen(),
+    );
+  }
 }
 
-class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _textController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  String? _activeConversationId; // track current conversation
-  StreamSubscription? _stateSub;
-  bool _showOfflineBanner = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final bloc = context.read<ChatBloc>();
-    final existing = bloc.state;
-    if (existing is ChatMessages && existing.messages.isNotEmpty) {
-      _activeConversationId = existing.conversationId;
-    } else {
-      bloc.add(LoadConversations());
-    }
-    _stateSub = context.read<ChatBloc>().stream.listen((state) {
-      // Auto-scroll on new messages
-      if (state is ChatMessages) {
-        if (state.conversationId != null) {
-          _activeConversationId = state.conversationId;
-        }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        });
-      }
-      if (state is ChatOffline) {
-        if (!_showOfflineBanner) {
-          _showOfflineBanner = true;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              action: SnackBarAction(
-                label: 'Retry',
-                onPressed: () {
-                  context.read<ChatBloc>().add(RetryLastQuestion());
-                },
-              ),
-            ),
-          );
-        }
-      } else {
-        if (_showOfflineBanner) {
-          // Clear any previously shown snackbar when back online or other state.
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          _showOfflineBanner = false;
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _textController.dispose();
-    _scrollController.dispose();
-    _stateSub?.cancel();
-    super.dispose();
-  }
-
-  void _onSelectConversation(String conversationId) {
-    setState(() => _activeConversationId = conversationId);
-    context.read<ChatBloc>().add(SetActiveConversation(conversationId));
-    Navigator.of(context).maybePop(); // close drawer on selection
-  }
-
-  void _onNewChat() {
-    setState(() => _activeConversationId = null);
-    _textController.clear();
-    // State reset handled by ResetNewChat event from drawer.
-    Navigator.of(context).maybePop();
-  }
-
-  void _onSend() {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
-    if (_activeConversationId == null) {
-      context.read<ChatBloc>().add(SendUserQuestion(question: text));
-    } else {
-      context.read<ChatBloc>().add(
-        SendFollowUpQuestion(
-          conversationId: _activeConversationId!,
-          question: text,
-        ),
-      );
-    }
-    _textController.clear();
-  }
+class ChatScreen extends StatelessWidget {
+  const ChatScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: ChatDrawer(
-        onSelectConversation: _onSelectConversation,
-        onNewChat: _onNewChat,
-        activeConversationId: _activeConversationId,
-      ),
-      drawerEnableOpenDragGesture: true,
-      drawerEdgeDragWidth: 72,
+      backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        title: const Text('Chat'),
-        leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
+        title: const Text(
+          'Chat',
+          style: TextStyle(
+            color: kPrimaryTextColor,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        backgroundColor: kBackgroundColor,
+        elevation: 1,
+        shadowColor: kShadowColor,
         actions: [
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              // Show Sign Up for any non-authenticated state
-              if (authState is! Authenticated) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate using go_router
-                      GoRouter.of(context).go('/signup');
-                    },
-                    icon: const Icon(Icons.person_add_alt_1),
-                    label: const Text('Sign Up'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
+          BlocBuilder<ChatBloc, ChatState>(
+            builder: (context, state) {
+              if (state is ChatSessionLoaded) {
+                return IconButton(
+                  icon: const Icon(Icons.history, color: kPrimaryTextColor),
+                  onPressed: () =>
+                      context.read<ChatBloc>().add(LoadChatHistory()),
                 );
               }
               return const SizedBox.shrink();
@@ -165,498 +73,83 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(15.0, 0, 15.0, 0),
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  BlocBuilder<ChatBloc, ChatState>(
-                    buildWhen: (p, c) =>
-                        c is ChatMessages ||
-                        c is ChatLoading ||
-                        c is ChatError ||
-                        c is ChatLoaded ||
-                        c is ChatOffline,
-                    builder: (context, state) {
-                      // If we have messages, show them.
-                      if (state is ChatMessages) {
-                        final messages = state.messages;
-                        final bool showTyping =
-                            state.hasPendingUserMessage ||
-                            (state.isStreaming &&
-                                ((state.streamingContent ?? '').isEmpty));
-
-                        if (messages.isEmpty && state.conversationId == null) {
-                          // Fall back to suggestions when the conversation has no messages yet.
-                          return SuggestionPanel(
-                            onTapSuggestion: (q) {
-                              // Insert only; user must press send.
-                              _textController.text = q;
-                              _textController.selection =
-                                  TextSelection.fromPosition(
-                                    TextPosition(
-                                      offset: _textController.text.length,
-                                    ),
-                                  );
-                              setState(() {}); // keep panel until send
-                            },
-                          );
-                        }
-
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 12,
-                          ),
-                          itemCount: messages.length + (showTyping ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index < messages.length) {
-                              final m = messages[index];
-                              final isUser = m.role == 'user';
-                              return Align(
-                                alignment: isUser
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxWidth:
-                                        MediaQuery.of(context).size.width *
-                                        0.75,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          vertical: 5,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                          horizontal: 16,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isUser
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.primary
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.surfaceVariant,
-                                          borderRadius: BorderRadius.circular(
-                                            22,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          m.content,
-                                          style: TextStyle(
-                                            color: isUser
-                                                ? Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary
-                                                : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                            fontSize: 16,
-                                            height: 1.4,
-                                          ),
-                                        ),
-                                      ),
-                                      if (!isUser) ...[
-                                        const SizedBox(height: 4),
-                                        _AiDisclaimer(),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                            // Extra item: typing shimmer before first chunk
-                            return Align(
-                              alignment: Alignment.centerLeft,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                      MediaQuery.of(context).size.width * 0.75,
-                                ),
-                                child: const _ShimmerBubble(
-                                  height: 22,
-                                  widthFactor: 0.6,
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }
-                      // Offline: show suggestions plus subtle note (snackbar already shown)
-                      if (state is ChatOffline) {
-                        if (state.messages.isNotEmpty) {
-                          final messages = state.messages;
-                          return _buildMessageList(messages);
-                        }
-                        return SuggestionPanel(
-                          error: state.message,
-                          onTapSuggestion: (q) {
-                            _textController.text = q;
-                            _textController
-                                .selection = TextSelection.fromPosition(
-                              TextPosition(offset: _textController.text.length),
-                            );
-                          },
-                        );
-                      }
-                      // If error show simple message; still allow suggestions.
-                      if (state is ChatError) {
-                        if (state.messages.isNotEmpty) {
-                          return _buildMessageList(
-                            state.messages,
-                            error: state.message,
-                            canRetry: state.canRetry,
-                          );
-                        }
-                        return SuggestionPanel(
-                          error: state.message,
-                          onTapSuggestion: (q) {
-                            _textController.text = q;
-                            _textController
-                                .selection = TextSelection.fromPosition(
-                              TextPosition(offset: _textController.text.length),
-                            );
-                          },
-                        );
-                      }
-                      // For initial load (ChatInitial, ChatLoading, ChatLoaded with no selection) show suggestions (no spinner).
-                      return SuggestionPanel(
-                        onTapSuggestion: (q) {
-                          _textController.text = q;
-                          _textController
-                              .selection = TextSelection.fromPosition(
-                            TextPosition(offset: _textController.text.length),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  // Floating retry button overlay when offline
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: BlocSelector<ChatBloc, ChatState, bool>(
-                      selector: (state) => state is ChatOffline,
-                      builder: (context, isOffline) {
-                        if (!isOffline) return const SizedBox.shrink();
-                        return FloatingActionButton.extended(
-                          heroTag: 'retry_offline',
-                          onPressed: () =>
-                              context.read<ChatBloc>().add(RetryLastQuestion()),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
-                        );
-                      },
-                    ),
-                  ),
-                  // Streaming indicator
-                  // Positioned(
-                  //   bottom: 16,
-                  //   left: 8,
-                  //   child: BlocBuilder<ChatBloc, ChatState>(
-                  //     buildWhen: (p, c) => c is ChatMessages,
-                  //     builder: (context, state) {
-                  //       if (state is ChatMessages && state.isStreaming) {
-                  //         return Row(
-                  //           mainAxisSize: MainAxisSize.min,
-                  //           children: [
-                  //             state.isStreaming ? _TypingIndicator() ,
-                  //             const SizedBox(width: 8),
-                  //             ElevatedButton.icon(
-                  //               style: ElevatedButton.styleFrom(
-                  //                 padding: const EdgeInsets.symmetric(
-                  //                   horizontal: 12,
-                  //                   vertical: 8,
-                  //                 ),
-                  //                 backgroundColor: Theme.of(
-                  //                   context,
-                  //                 ).colorScheme.errorContainer,
-                  //                 foregroundColor: Theme.of(
-                  //                   context,
-                  //                 ).colorScheme.onErrorContainer,
-                  //               ),
-                  //               onPressed: () => context.read<ChatBloc>().add(
-                  //                 CancelStreaming('current'),
-                  //               ),
-                  //               icon: const Icon(Icons.stop),
-                  //               label: const Text('Stop'),
-                  //             ),
-                  //           ],
-                  //         );
-                  //       }
-                  //       return const SizedBox.shrink();
-                  //     },
-                  //   ),
-                  // ),
-                ],
-              ),
-            ),
-            MessageInput(controller: _textController, onSend: _onSend),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageList(
-    List<Message> messages, {
-    String? error,
-    bool canRetry = false,
-  }) {
-    return Stack(
-      children: [
-        ListView.builder(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final m = messages[index];
-            final isUser = m.role == 'user';
-            return Align(
-              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.75,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 5),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isUser
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.surfaceVariant,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Text(
-                        m.content,
-                        style: TextStyle(
-                          color: isUser
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 16,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    if (!isUser) ...[
-                      const SizedBox(height: 4),
-                      _AiDisclaimer(),
-                    ],
-                  ],
-                ),
-              ),
+      floatingActionButton: BlocBuilder<ChatBloc, ChatState>(
+        builder: (context, state) {
+          if (state is ChatHistoryLoaded) {
+            return FloatingActionButton(
+              onPressed: () => context.read<ChatBloc>().add(StartNewChat()),
+              backgroundColor: kButtonColor,
+              child: const Icon(Icons.add, color: Colors.white),
             );
-          },
-        ),
-        if (error != null)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      error,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                  if (canRetry)
-                    TextButton.icon(
-                      onPressed: () =>
-                          context.read<ChatBloc>().add(RetryLastQuestion()),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _AiDisclaimer extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final baseStyle = theme.textTheme.bodySmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
-      height: 1.3,
-    );
-    final linkStyle = baseStyle?.copyWith(
-      color: theme.colorScheme.primary,
-      decoration: TextDecoration.underline,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 8.0, right: 8.0, bottom: 2.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 14, color: theme.colorScheme.outline),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text:
-                        'Not legal advice. For educational purposes only. For legal assistance, see ',
-                    style: baseStyle,
-                  ),
-                  TextSpan(
-                    text: 'Legal Aid Directories',
-                    style: linkStyle,
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        GoRouter.of(context).go('/legal-aid');
-                      },
-                  ),
-                  TextSpan(text: '.', style: baseStyle),
-                ],
-              ),
-            ),
-          ),
-        ],
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+      body: BlocBuilder<ChatBloc, ChatState>(
+        builder: (context, state) {
+          if (state is ChatLoading || state is ChatInitial) {
+            return const Center(
+              child: CircularProgressIndicator(color: kButtonColor),
+            );
+          }
+          if (state is ChatHistoryLoaded) {
+            return ChatHistoryView(state: state);
+          }
+          if (state is ChatSessionLoaded) {
+            return ChatView(state: state);
+          }
+          if (state is ChatError) {
+            return Center(child: Text('Error: ${state.message}'));
+          }
+          return const Center(child: Text('Welcome!'));
+        },
       ),
     );
   }
 }
 
-class _TypingIndicator extends StatefulWidget {
-  @override
-  State<_TypingIndicator> createState() => _TypingIndicatorState();
-}
-
-class _TypingIndicatorState extends State<_TypingIndicator>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+class ChatHistoryView extends StatelessWidget {
+  final ChatHistoryLoaded state;
+  const ChatHistoryView({super.key, required this.state});
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween(
-        begin: 0.3,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
+    if (state.sessions.sessions.isEmpty) {
+      return const Center(
+        child: Text(
+          "No past conversations.\nTap '+' to start a new one!",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: kSecondaryTextColor, fontSize: 16),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(width: 4),
-            _Dot(delay: 0),
-            _Dot(delay: 150),
-            _Dot(delay: 300),
-            SizedBox(width: 4),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Simple shimmer bubble (no external package)
-class _ShimmerBubble extends StatefulWidget {
-  final double height;
-  final double widthFactor; // 0..1 relative max width
-  const _ShimmerBubble({required this.height, this.widthFactor = 0.6});
-
-  @override
-  State<_ShimmerBubble> createState() => _ShimmerBubbleState();
-}
-
-class _ShimmerBubbleState extends State<_ShimmerBubble>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final base = theme.colorScheme.surfaceVariant;
-    final onBase = theme.colorScheme.onSurfaceVariant;
-    final width = MediaQuery.of(context).size.width * 0.75 * widget.widthFactor;
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        // shimmer sweep from -0.5..1.5 across width
-        final t = _c.value; // 0..1
-        final sweepCenter = (t * 2.0) - 0.5;
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 5),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: base,
-            borderRadius: BorderRadius.circular(22),
+      );
+    }
+    return ListView.builder(
+      itemCount: state.sessions.sessions.length,
+      itemBuilder: (context, index) {
+        final session = state.sessions.sessions[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          color: kCardBackgroundColor,
+          elevation: 2,
+          shadowColor: kShadowColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: SizedBox(
-            height: widget.height,
-            width: width,
-            child: CustomPaint(
-              painter: _ShimmerPainter(
-                base: base,
-                highlight: onBase.withOpacity(0.12),
-                sweepCenter: sweepCenter,
+          child: ListTile(
+            title: Text(
+              session.title,
+              style: const TextStyle(
+                color: kPrimaryTextColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            subtitle: Text(
+              'Last active: ${session.lastActiveAt.toLocal()}',
+              style: const TextStyle(color: kSecondaryTextColor),
+            ),
+            onTap: () {
+              context.read<ChatBloc>().add(LoadChatSession(session.id));
+            },
           ),
         );
       },
@@ -664,83 +157,243 @@ class _ShimmerBubbleState extends State<_ShimmerBubble>
   }
 }
 
-class _ShimmerPainter extends CustomPainter {
-  final Color base;
-  final Color highlight;
-  final double sweepCenter; // -0.5..1.5
-  _ShimmerPainter({
-    required this.base,
-    required this.highlight,
-    required this.sweepCenter,
-  });
+class ChatView extends StatefulWidget {
+  final ChatSessionLoaded state;
+  const ChatView({super.key, required this.state});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: [base, highlight, base],
-        stops: [
-          (sweepCenter - 0.2).clamp(0.0, 1.0),
-          sweepCenter.clamp(0.0, 1.0),
-          (sweepCenter + 0.2).clamp(0.0, 1.0),
-        ],
-      ).createShader(rect);
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _ShimmerPainter oldDelegate) {
-    return oldDelegate.sweepCenter != sweepCenter ||
-        oldDelegate.base != base ||
-        oldDelegate.highlight != highlight;
-  }
+  State<ChatView> createState() => _ChatViewState();
 }
 
-class _Dot extends StatefulWidget {
-  final int delay;
-  const _Dot({required this.delay});
-  @override
-  State<_Dot> createState() => _DotState();
-}
+class _ChatViewState extends State<ChatView> {
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FlutterSoundRecorder _audioRecorder = FlutterSoundRecorder();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isRecorderInitialized = false;
 
-class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _c.repeat();
+    _initializeRecorder();
+  }
+
+  Future<void> _initializeRecorder() async {
+    await _audioRecorder.openRecorder();
+    setState(() {
+      _isRecorderInitialized = true;
     });
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _textController.dispose();
+    _scrollController.dispose();
+    _audioRecorder.closeRecorder();
+    _audioPlayer.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleVoiceCommand() async {
+    if (!_isRecorderInitialized) return;
+    final bloc = context.read<ChatBloc>();
+
+    if (_audioRecorder.isRecording) {
+      final path = await _audioRecorder.stopRecorder();
+      if (path != null) {
+        bloc.add(SendVoiceMessage(audioFile: File(path), language: 'en'));
+      }
+    } else {
+      if (await Permission.microphone.request().isGranted) {
+        final tempDir = await getTemporaryDirectory();
+        final path = '${tempDir.path}/flutter_sound.wav';
+        await _audioRecorder.startRecorder(toFile: path);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission is required.')),
+        );
+      }
+    }
+    setState(() {});
+  }
+
+  Future<void> _playAudioStream(Stream<List<int>> stream) async {
+    print("UI received audio stream. Attempting to save it for debugging...");
+    try {
+      // --- START OF DEBUGGING CODE ---
+
+      // Get a temporary directory to save the file
+      final directory = await getTemporaryDirectory();
+      final filePath =
+          '${directory.path}/debug_audio_response.bin'; // Save as a generic binary file
+      final file = File(filePath);
+      final sink = file.openWrite();
+
+      // Listen to the stream and write all the bytes to the file
+      await stream.forEach((bytes) {
+        sink.add(bytes);
+      });
+
+      // Close the file sink
+      await sink.close();
+
+      final fileLength = await file.length();
+      print("SUCCESS: Saved stream to file at: $filePath");
+      print("File size: $fileLength bytes.");
+
+      // --- END OF DEBUGGING CODE ---
+
+      // We will now try to play from the file we just saved
+      if (fileLength > 0) {
+        print("Attempting to play the saved file...");
+        await _audioPlayer.setFilePath(filePath);
+        _audioPlayer.play();
+        await _audioPlayer.playerStateStream.firstWhere(
+          (s) => s.processingState == ProcessingState.completed,
+        );
+      } else {
+        print("Skipping playback because the received stream was empty.");
+      }
+    } catch (e) {
+      print("Error during stream processing/playback: $e");
+    } finally {
+      // Tell the BLoC to clear the audio stream from the state
+      context.read<ChatBloc>().add(AudioPlaybackFinished());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: Tween(
-        begin: 0.6,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2.5),
-        child: CircleAvatar(
-          radius: 4,
-          backgroundColor: Theme.of(context).colorScheme.primary,
+    return BlocListener<ChatBloc, ChatState>(
+      listener: (context, state) {
+        if (state is ChatSessionLoaded) {
+          _scrollToBottom();
+          if (state.audioStreamToPlay != null) {
+            _playAudioStream(state.audioStreamToPlay!);
+          }
+        }
+      },
+      child: Column(
+        children: [
+          Expanded(
+            child: widget.state.messages.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Send a message to start!',
+                      style: TextStyle(color: kSecondaryTextColor),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: widget.state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = widget.state.messages[index];
+                      return MessageBubble(
+                        content: message.content,
+                        isUserMessage: message.type == 'user_query',
+                      );
+                    },
+                  ),
+          ),
+          _buildTextInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextInput() {
+    final isRecording = _audioRecorder.isRecording;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: kBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, -1),
+            blurRadius: 4,
+            color: kShadowColor.withOpacity(0.5),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _textController,
+                style: const TextStyle(color: kPrimaryTextColor),
+                decoration: const InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: TextStyle(color: kSecondaryTextColor),
+                  filled: true,
+                  fillColor: kCardBackgroundColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(30.0)),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: isRecording ? Colors.red.shade400 : kSecondaryTextColor,
+              borderRadius: BorderRadius.circular(30),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(30),
+                onTap: _isRecorderInitialized ? _handleVoiceCommand : null,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Icon(
+                    isRecording ? Icons.stop : Icons.mic,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: kButtonColor,
+              borderRadius: BorderRadius.circular(30),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(30),
+                onTap: _sendMessage,
+                child: const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: Icon(Icons.send, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _sendMessage() {
+    final text = _textController.text.trim();
+    if (text.isNotEmpty) {
+      context.read<ChatBloc>().add(
+        SendTextMessage(query: text, language: 'en'),
+      );
+      _textController.clear();
+    }
   }
 }

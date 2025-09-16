@@ -1,111 +1,68 @@
-import 'package:get_it/get_it.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-// Core
-import '../../../core/utils/internet_connection.dart';
+import 'package:get_it/get_it.dart';
 
 // Data layer
-import 'data/datasources/chat_local_data_source.dart';
 import 'data/datasources/chat_remote_data_source.dart';
-import 'data/datasources/chat_socket_data_source.dart';
-import 'data/repository/chat_repository_impl.dart';
 
 // Domain layer
+import 'data/repository/chat_repository_impl.dart';
 import 'domain/repository/chat_repository.dart';
-import 'domain/usecases/ask_question_usecase.dart';
-import 'domain/usecases/ask_follow_up_usecase.dart';
-import 'domain/usecases/get_chat_history_usecase.dart';
-import 'domain/usecases/get_chat_message_usecase.dart';
-import 'domain/usecases/stop_ask_question_stream.dart';
-import 'domain/usecases/save_ai_message_usecase.dart';
+import 'domain/usecases/get_messages_from_session.dart';
+import 'domain/usecases/list_user_chat_sessions.dart';
+import 'domain/usecases/send_query.dart';
+import 'domain/usecases/send_voice_query.dart';
 
 // Presentation
 import 'presentation/bloc/chat_bloc.dart';
 
 final GetIt chatsl = GetIt.instance;
 
-/// Register all dependencies for the Chat (AI) feature.
-/// Call this during app startup (after Hive.init & adapter registration).
+/// Register all dependencies for the Chat feature.
+/// Assumes core dependencies (like http.Client) are already registered.
 Future<void> setupChatFeatureDependencies() async {
-  // External / shared singletons (only if not already registered elsewhere)
-  if (!chatsl.isRegistered<http.Client>()) {
-    chatsl.registerLazySingleton<http.Client>(() => http.Client());
-  }
-  if (!chatsl.isRegistered<FlutterSecureStorage>()) {
-    chatsl.registerLazySingleton<FlutterSecureStorage>(
-      () => const FlutterSecureStorage(),
-    );
-  }
-  // InternetConnectionChecker is registered in the app-level DI to avoid duplicates.
-  if (!chatsl.isRegistered<NetworkInfo>()) {
-    chatsl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(chatsl()));
-  }
+  // --- DATA LAYER ---
 
-  // Data sources
-  if (!chatsl.isRegistered<ChatLocalDataSource>()) {
-    final local = ChatLocalDataSourceImpl();
-    await local.init();
-    chatsl.registerLazySingleton<ChatLocalDataSource>(() => local);
-  }
-  if (!chatsl.isRegistered<ChatRemoteDataSource>()) {
-    chatsl.registerLazySingleton<ChatRemoteDataSource>(
-      () => ChatRemoteDataSourceImpl(client: chatsl(), secureStorage: chatsl()),
-    );
-  }
-  if (!chatsl.isRegistered<ChatSocketDataSource>()) {
-    chatsl.registerLazySingleton<ChatSocketDataSource>(
-      () => ChatSocketDataSourceImpl(),
-    );
-  }
+  // Data Sources
+  // CORRECTED: Only the 'client' parameter is provided, matching your implementation.
+  chatsl.registerLazySingleton<ChatRemoteDataSource>(
+    () => ChatRemoteDataSourceImpl(client: chatsl()),
+  );
 
   // Repository
-  if (!chatsl.isRegistered<ChatRepository>()) {
-    chatsl.registerLazySingleton<ChatRepository>(
-      () => ChatRepositoryImpl(
-        networkInfo: chatsl(),
-        localDataSource: chatsl(),
-        remoteDataSource: chatsl(),
-        socketDataSource: chatsl(),
-      ),
-    );
-  }
+  // CORRECTED: Only the 'remoteDataSource' parameter is provided, matching your implementation.
+  chatsl.registerLazySingleton<ChatRepository>(
+    () => ChatRepositoryImpl(
+      remoteDataSource: chatsl(),
+      networkInfo: chatsl(), // This line was missing
+    ),
+  );
+  // --- DOMAIN LAYER ---
 
-  // Use cases
-  if (!chatsl.isRegistered<GetChatHistoryUsecase>()) {
-    chatsl.registerLazySingleton(() => GetChatHistoryUsecase(chatsl()));
-  }
-  if (!chatsl.isRegistered<GetChatMessageUsecase>()) {
-    chatsl.registerLazySingleton(() => GetChatMessageUsecase(chatsl()));
-  }
-  if (!chatsl.isRegistered<AskQuestionUseCase>()) {
-    chatsl.registerLazySingleton(() => AskQuestionUseCase(chatsl()));
-  }
-  if (!chatsl.isRegistered<AskFollowUpUseCase>()) {
-    chatsl.registerLazySingleton(() => AskFollowUpUseCase(chatsl()));
-  }
-  if (!chatsl.isRegistered<StopAskQuestionStreamUseCase>()) {
-    chatsl.registerLazySingleton(() => StopAskQuestionStreamUseCase(chatsl()));
-  }
-  if (!chatsl.isRegistered<SaveAiMessageUseCase>()) {
-    chatsl.registerLazySingleton(() => SaveAiMessageUseCase(chatsl()));
-  }
+  // Use Cases
+  chatsl.registerLazySingleton(() => ListUserChatSessions(chatsl()));
+  chatsl.registerLazySingleton(() => GetMessagesFromSession(chatsl()));
+  chatsl.registerLazySingleton(() => SendQuery(chatsl()));
+  chatsl.registerLazySingleton(() => SendVoiceQuery(chatsl()));
+
+  // --- PRESENTATION LAYER ---
 
   // Bloc
-  if (!chatsl.isRegistered<ChatBloc>()) {
-    chatsl.registerFactory(
-      () => ChatBloc(
-        getChatHistoryUsecase: chatsl(),
-        getChatMessageUsecase: chatsl(),
-        askQuestionUseCase: chatsl(),
-        askFollowUpUseCase: chatsl(),
-        stopStreamUseCase: chatsl(),
-  saveAiMessageUseCase: chatsl(),
-      ),
-    );
-  }
+  chatsl.registerFactory(
+    () => ChatBloc(
+      listUserChatSessionsUseCase: chatsl(),
+      getMessagesFromSessionUseCase: chatsl(),
+      sendQueryUseCase: chatsl(),
+      sendVoiceQueryUseCase: chatsl(),
+    ),
+  );
 }
+  // External / shared singletons (only if not already registered elsewhere)
+ 
+  // InternetConnectionChecker is registered in the app-level DI to avoid duplicates.
+  
+
+  
+
 
 // Convenience providers for MultiRepositoryProvider / MultiBlocProvider usage
 List<RepositoryProvider> get chatRepositoryProviders => [

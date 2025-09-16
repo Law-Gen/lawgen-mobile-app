@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
+import '../core/errors/network/network_info.dart';
 import '../features/onboarding_auth/data/datasources/auth_local_datasource.dart';
 import '../features/onboarding_auth/data/datasources/auth_remote_datasource.dart';
 import '../features/onboarding_auth/data/repositories/auth_repository_impl.dart';
@@ -41,7 +42,11 @@ Future<void> init() async {
   if (!sl.isRegistered<FlutterSecureStorage>()) {
     sl.registerLazySingleton(() => const FlutterSecureStorage());
   }
-
+  if (!sl.isRegistered<NetworkInfo>()) {
+    sl.registerLazySingleton<NetworkInfo>(
+      () => NetworkInfoImpl(connectionChecker: sl()),
+    );
+  }
   // Core external utilities used across features
   if (!sl.isRegistered<InternetConnectionChecker>()) {
     sl.registerLazySingleton<InternetConnectionChecker>(

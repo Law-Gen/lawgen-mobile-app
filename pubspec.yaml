@@ -31,6 +31,8 @@ dependencies:
   image_picker: ^1.0.7
   dio: ^5.9.0
   stylish_bottom_bar: ^1.0.3
+  flutter_sound: ^9.2.13
+  permission_handler: ^11.0.1
   # Voice recording and playback
 
   just_audio: ^0.10.5

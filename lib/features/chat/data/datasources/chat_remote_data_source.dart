@@ -1,93 +1,182 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
+import 'dart:io';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
+import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:http/http.dart' as http;
+
 import '../../../../core/errors/exception.dart';
-import '../models/conversation_model.dart';
+import '../../domain/entities/streamed_chat_response.dart';
 import '../models/message_model.dart';
+import '../models/paginated_chat_sessions_model.dart';
+import 'package:http_parser/http_parser.dart';
 
 abstract class ChatRemoteDataSource {
-  Future<List<ConversationModel>> getChatHistory();
-  Future<List<MessageModel>> getChatMessages(String conversationId);
-}
+  // MODIFIED: Added optional sessionId
+  Stream<StreamedChatResponse> sendQuery({
+    required String query,
+    required String language,
+    String? sessionId,
+  });
 
-// Renamed URIs to avoid name collision with class methods
-final chatHistoryUri = Uri.parse('https://g5-flutter-learning-path-be-tvum.onrender.com/api/v2/auth/register');
-final chatMessagesUri = Uri.parse('https://g5-flutter-learning-path-be-tvum.onrender.com/api/v2/auth/login');
+  Future<PaginatedChatSessionsModel> listUserChatSessions();
+
+  Future<List<MessageModel>> getMessagesFromSession(String sessionId);
+
+  Stream<List<int>> sendVoiceQuery({
+    required File audioFile,
+    String? sessionId,
+    required String language,
+  });
+}
 
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final http.Client client;
-  final FlutterSecureStorage secureStorage;
+  final String baseUrl = 'https://lawgen-backend-3ln1.onrender.com';
+  final String accessToken =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjAsImdlbmRlciI6ImZlbWFsZSIsImV4cCI6MTc1NzMzOTQ5NSwiaWF0IjoxNzU3MzIxNDk1fQ.98JX0rHTIX5bnTDK2bkj9giZSKcgtZ0lqiLxnx-2VEc';
 
-  ChatRemoteDataSourceImpl({required this.client, required this.secureStorage});
+  ChatRemoteDataSourceImpl({required this.client});
 
-  String _maskToken(String? token) {
-    if (token == null) return 'null';
-    final show = min(6, token.length);
-    return '${token.substring(0, show)}... (${token.length} chars)';
+  @override
+  Stream<StreamedChatResponse> sendQuery({
+    required String query,
+    required String language,
+    String? sessionId,
+  }) {
+    final controller = StreamController<StreamedChatResponse>();
+    final url = '$baseUrl/api/v1/chats/query';
+
+    // The body now includes the session ID if available
+    final body = {
+      "query": query,
+      "language": language,
+      if (sessionId != null) "session_id": sessionId,
+    };
+
+    SSEClient.subscribeToSSE(
+      method: SSERequestType.POST,
+      url: url,
+      header: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $accessToken",
+      },
+      body: body,
+    ).listen(
+      (event) {
+        if (event.data == null || event.event == null) return;
+        try {
+          final data = json.decode(event.data!);
+          switch (event.event) {
+            case 'session_id':
+              controller.add(SessionId(data['id']));
+              break;
+            case 'message':
+              controller.add(
+                MessageChunk(text: data['text'], sources: data['sources']),
+              );
+              break;
+            case 'complete':
+              controller.add(
+                StreamComplete(
+                  isComplete: data['is_complete'],
+                  suggestedQuestions: List<String>.from(
+                    data['suggested_questions'],
+                  ),
+                ),
+              );
+              break;
+          }
+        } catch (e) {
+          controller.addError(ServerException());
+        }
+      },
+      onError: (error) {
+        controller.addError(ServerException());
+        controller.close(); // Close stream on error
+      },
+      onDone: () {
+        controller.close(); // Close stream when SSE connection is done
+      },
+    );
+
+    return controller.stream;
   }
 
   @override
-  Future<List<ConversationModel>> getChatHistory() async {
-    final authToken = await secureStorage.read(key: 'AUTH_TOKEN');
-    print('getChatHistory: retrieved authToken=${_maskToken(authToken)}');
-
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${authToken ?? "null"}',
-    };
-    print('getChatHistory: GET $chatHistoryUri');
-    print('getChatHistory: headers=${headers..update('Authorization', (v) => 'Bearer ${_maskToken(authToken)}')}');
-
-    final response = await client.get(chatHistoryUri, headers: headers);
-    print('getChatHistory: response.statusCode=${response.statusCode}');
-    print('getChatHistory: response.body=${response.body}');
+  Future<PaginatedChatSessionsModel> listUserChatSessions() async {
+    final response = await client.get(
+      Uri.parse('$baseUrl/api/v1/chats/sessions'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
 
     if (response.statusCode == 200) {
-      try {
-        final body = json.decode(response.body) as List<dynamic>;
-        print('getChatHistory: parsed body length=${body.length}');
-        // TODO: parse JSON into ConversationModel instances once a parsing constructor exists on the model
-        return <ConversationModel>[];
-      } catch (e, st) {
-        print('getChatHistory: JSON parse error: $e\n$st');
-        throw ServerException();
-      }
+      return PaginatedChatSessionsModel.fromJson(json.decode(response.body));
     } else {
-      print('getChatHistory: server error ${response.statusCode}');
       throw ServerException();
     }
   }
 
   @override
-  Future<List<MessageModel>> getChatMessages(String conversationId) async {
-    final authToken = await secureStorage.read(key: 'AUTH_TOKEN');
-    print('getChatMessages: conversationId=$conversationId authToken=${_maskToken(authToken)}');
-
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${authToken ?? "null"}',
-    };
-    print('getChatMessages: GET $chatMessagesUri');
-    print('getChatMessages: headers=${headers..update('Authorization', (v) => 'Bearer ${_maskToken(authToken)}')}');
-
-    final response = await client.get(chatMessagesUri, headers: headers);
-    print('getChatMessages: response.statusCode=${response.statusCode}');
-    print('getChatMessages: response.body=${response.body}');
+  Future<List<MessageModel>> getMessagesFromSession(String sessionId) async {
+    final response = await client.get(
+      Uri.parse('$baseUrl/api/v1/chats/sessions/$sessionId/messages'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
 
     if (response.statusCode == 200) {
-      try {
-        final body = json.decode(response.body) as List<dynamic>;
-        print('getChatMessages: parsed body length=${body.length}');
-        // TODO: parse JSON into MessageModel instances once a parsing constructor exists on the model
-        return <MessageModel>[];
-      } catch (e, st) {
-        print('getChatMessages: JSON parse error: $e\n$st');
-        throw ServerException();
-      }
+      final messages = json.decode(response.body) as List;
+      return messages.map((message) => MessageModel.fromJson(message)).toList();
     } else {
-      print('getChatMessages: server error ${response.statusCode}');
+      throw ServerException();
+    }
+  }
+
+  @override
+  Stream<List<int>> sendVoiceQuery({
+    required File audioFile,
+    String? sessionId,
+    required String language,
+  }) async* {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/v1/chats/voice-query'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $accessToken';
+
+    if (sessionId != null) {
+      request.fields['sessionId'] = sessionId;
+    }
+    request.fields['language'] = language;
+
+    // Add the file with its specific Content-Type.
+    // This now works because of the import added at the top of the file.
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        audioFile.path,
+        contentType: MediaType('audio', 'mpeg'),
+      ),
+    );
+
+    print("[DataSource] Sending voice query to ${request.url}");
+    print("[DataSource] with file: ${audioFile.path}");
+    print("[DataSource] with Content-Type: audio/mpeg");
+
+    final response = await client.send(request);
+
+    print(
+      "[DataSource] Voice query response status code: ${response.statusCode}",
+    );
+
+    if (response.statusCode == 200) {
+      yield* response.stream;
+    } else {
+      final responseBody = await http.Response.fromStream(response);
+      print("[DataSource] SERVER ERROR BODY: ${responseBody.body}");
       throw ServerException();
     }
   }

@@ -1,11 +1,24 @@
-class Message {
-  final String role;
-  final String content;
-  final String? language;
+import 'package:equatable/equatable.dart';
 
-  Message({
-    required this.role,
+import 'source.dart';
+
+class Message extends Equatable {
+  final String id;
+  final String sessionId;
+  final String type;
+  final String content;
+  final List<Source>? sources;
+  final DateTime createdAt;
+
+  const Message({
+    required this.id,
+    required this.sessionId,
+    required this.type,
     required this.content,
-    this.language,
+    this.sources,
+    required this.createdAt,
   });
+
+  @override
+  List<Object?> get props => [id, sessionId, type, content, sources, createdAt];
 }
