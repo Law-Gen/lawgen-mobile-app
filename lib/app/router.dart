@@ -1,9 +1,35 @@
+// router.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// --- Placeholder Screens ---
-// In your actual app, you would import your real screen widgets here.
-// These are placeholders to make the router code runnable.
+import '../features/LegalAidDirectory/presentation/pages/legal_aid_directory_page.dart';
+import '../features/chat/presentation/pages/chat_page.dart';
+import '../features/catalog/presentation/pages/legal_articles_page.dart';
+import '../features/catalog/presentation/pages/legal_categories_page.dart';
+import '../features/onboarding_auth/presentation/pages/forget_password_page.dart';
+import '../features/onboarding_auth/presentation/pages/onboarding_page.dart';
+import '../features/onboarding_auth/presentation/pages/otp_page.dart';
+import '../features/onboarding_auth/presentation/pages/reset_password_page.dart';
+import '../features/onboarding_auth/presentation/pages/sign_in_page.dart';
+import '../features/onboarding_auth/presentation/pages/sign_up_page.dart';
+import '../features/onboarding_auth/presentation/pages/success_page.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/quize/domain/entities/quize.dart';
+import '../features/quize/presentation/pages/question_page.dart';
+import '../features/quize/presentation/pages/quize_home_page.dart';
+import '../features/quize/presentation/pages/quize_result_page.dart';
+
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
+// --- Placeholder Screens (Keep as is) ---
 class PlaceholderScreen extends StatelessWidget {
   final String title;
   final Widget? child;
@@ -17,7 +43,10 @@ class PlaceholderScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Screen: $title', style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              'Screen: $title',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             if (child != null) child!,
           ],
         ),
@@ -26,22 +55,54 @@ class PlaceholderScreen extends StatelessWidget {
   }
 }
 
+// --- Main App Shell with Bottom Navigation (Updated without packages) ---
 class MainAppShell extends StatelessWidget {
   final Widget child;
   const MainAppShell({super.key, required this.child});
-  // In a real app, this would be your Scaffold with a BottomNavigationBar
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
+        // --- Theming ---
+        backgroundColor:
+            kCardBackgroundColor, // A clean white background for the bar
+        selectedItemColor:
+            kButtonColor, // Active icon and label color from your theme
+        unselectedItemColor:
+            kSecondaryTextColor, // Inactive icon and label color
+        // --- Style and Layout ---
+        type: BottomNavigationBarType
+            .fixed, // This ensures all labels are always visible
+        elevation: 10, // Adds a subtle shadow for depth
+        showUnselectedLabels: true, // Explicitly ensure labels are always shown
+        // --- Functionality ---
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
+
+        // --- Items and Icons ---
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizzes'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble), // Filled icon when active
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.library_books_outlined),
+            activeIcon: Icon(Icons.library_books), // Filled icon when active
+            label: 'Catalog',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_outlined),
+            activeIcon: Icon(Icons.quiz), // Filled icon when active
+            label: 'Quizzes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person), // Filled icon when active
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -74,45 +135,65 @@ class MainAppShell extends StatelessWidget {
   }
 }
 
-
-// --- GoRouter Configuration ---
-
+// --- GoRouter Configuration (No Changes Below) ---
 class AppRouter {
-  // Mock authentication state. In a real app, you would get this from your auth provider/state manager.
-  final bool isAuthenticated = false; // Change to `true` to test logged-in routes
-  final bool hasSeenOnboarding = false; // Change to `true` to skip onboarding
+  final ValueNotifier<bool> isAuthenticated = ValueNotifier(false);
+  final ValueNotifier<bool> hasSeenOnboarding = ValueNotifier(false);
+
+  AppRouter() {
+    _loadOnboardingStatus();
+  }
+
+  Future<void> _loadOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    hasSeenOnboarding.value = prefs.getBool('hasSeenOnboarding') ?? false;
+  }
+
+  Future<void> setOnboardingSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenOnboarding', true);
+    hasSeenOnboarding.value = true;
+  }
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: hasSeenOnboarding.value ? '/' : '/onboarding',
+    refreshListenable: Listenable.merge([isAuthenticated, hasSeenOnboarding]),
     routes: [
       // --- Onboarding ---
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const PlaceholderScreen(title: 'Onboarding & Consent'),
+        builder: (context, state) => OnboardingPage(router: this),
       ),
 
       // --- Authentication Routes ---
+      GoRoute(path: '/signin', builder: (context, state) => const SignInPage()),
+      GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
       GoRoute(
-        path: '/signin',
-        builder: (context, state) => const PlaceholderScreen(title: 'Sign In'),
+        path: '/forgotpassword',
+        builder: (context, state) => const ForgotPasswordPage(),
       ),
       GoRoute(
-        path: '/signup',
-        builder: (context, state) => const PlaceholderScreen(title: 'Sign Up'),
+        path: '/otppage',
+        builder: (context, state) {
+          final email = state.extra as String?;
+          return OtpPage(email: email ?? 'Error: No email provided');
+        },
       ),
       GoRoute(
-        path: '/forgot-password',
-        builder: (context, state) => const PlaceholderScreen(title: 'Forgot Password'),
+        path: '/successreset',
+        builder: (context, state) => const SuccessResetPage(),
       ),
       GoRoute(
-        path: '/reset-password',
-        builder: (context, state) => const PlaceholderScreen(title: 'Reset Password'),
+        path: '/resetpassword/:resetToken',
+        builder: (context, state) =>
+            ResetPasswordPage(resetToken: state.pathParameters['resetToken']!),
       ),
 
-      // --- Guest/Anonymous Routes ---
+      // --- Guest/Anonymous Route ---
       GoRoute(
         path: '/',
-        builder: (context, state) => const PlaceholderScreen(title: 'Chat (Guest Mode)'),
+        builder: (context, state) =>
+            ChatPage(), // This is the non-shelled chat page for guests.
       ),
 
       // --- Logged-In User Routes with Bottom Navigation Shell ---
@@ -121,40 +202,45 @@ class AppRouter {
           return MainAppShell(child: child);
         },
         routes: [
-          GoRoute(
-            path: '/chat',
-            builder: (context, state) => const PlaceholderScreen(title: 'Chat (Logged-In)'),
-          ),
+          GoRoute(path: '/chat', builder: (context, state) => ChatPage()),
           GoRoute(
             path: '/topics',
-            builder: (context, state) => const PlaceholderScreen(title: 'Legal Topics'),
+            builder: (context, state) => LegalCategoriesPage.withBloc(),
             routes: [
-              // Nested route for topic details
               GoRoute(
-                path: ':topicId', // e.g., /topics/family-law
-                builder: (context, state) => PlaceholderScreen(
-                  title: 'Topic Detail: ${state.pathParameters['topicId']}',
-                ),
+                path: ':topicId',
+                builder: (context, state) {
+                  final categoryId = state.pathParameters['topicId']!;
+                  final categoryName = state.extra as String;
+                  return LegalArticlesPage.withBloc(
+                    categoryId: categoryId,
+                    categoryName: categoryName,
+                  );
+                },
               ),
             ],
           ),
           GoRoute(
             path: '/quiz',
-            builder: (context, state) => const PlaceholderScreen(title: 'Quiz Home'),
+            builder: (context, state) => QuizHomePage.withBloc(),
             routes: [
-              // Nested route for a specific quiz
               GoRoute(
-                path: ':quizId', // e.g., /quiz/employment-law-quiz
-                builder: (context, state) => PlaceholderScreen(
-                  title: 'Quiz Questions: ${state.pathParameters['quizId']}',
-                ),
+                path: ':quizId',
+                builder: (context, state) =>
+                    QuizQuestionPage.withBloc(state.pathParameters['quizId']!),
                 routes: [
-                  // Nested route for quiz results
                   GoRoute(
-                    path: 'results', // e.g., /quiz/employment-law-quiz/results
-                    builder: (context, state) => PlaceholderScreen(
-                      title: 'Quiz Results: ${state.pathParameters['quizId']}',
-                    ),
+                    path: 'results',
+                    builder: (context, state) {
+                      final data = state.extra as Map<String, dynamic>;
+                      final quiz = data['quiz'] as Quiz;
+                      final userAnswers =
+                          data['userAnswers'] as Map<String, String>;
+                      return QuizResultPage(
+                        quiz: quiz,
+                        userAnswers: userAnswers,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -162,78 +248,64 @@ class AppRouter {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const PlaceholderScreen(title: 'Profile'),
+            builder: (context, state) => const ProfilePage(),
           ),
         ],
       ),
 
-      // --- Standalone Routes (Without Bottom Navigation) ---
+      // --- Standalone Routes ---
       GoRoute(
         path: '/legal-aid',
-        builder: (context, state) => const PlaceholderScreen(title: 'Legal Aid Directory'),
-      ),
-      GoRoute(
-        path: '/subscriptions',
-        builder: (context, state) => const PlaceholderScreen(title: 'Subscription Plans'),
-      ),
-
-      // --- Admin Panel Routes (Could have its own ShellRoute) ---
-      GoRoute(
-        path: '/admin/dashboard',
-        builder: (context, state) => const PlaceholderScreen(title: 'Admin Dashboard'),
-      ),
-      GoRoute(
-        path: '/admin/users',
-        builder: (context, state) => const PlaceholderScreen(title: 'Admin User Management'),
-      ),
-      GoRoute(
-        path: '/admin/quizzes',
-        builder: (context, state) => const PlaceholderScreen(title: 'Admin Quizzes'),
-      ),
-      GoRoute(
-        path: '/admin/content',
-        builder: (context, state) => const PlaceholderScreen(title: 'Admin Content Management'),
+        builder: (context, state) => LegalAidDirectoryPage.withBloc(),
       ),
     ],
-    
+
     // --- Redirect Logic ---
-    redirect: (BuildContext context, GoRouterState state) {
-      final bool isLoggingIn = state.uri.toString() == '/signin' || state.uri.toString() == '/signup';
-      final bool isOnboarding = state.uri.toString() == '/onboarding';
-      
-      // If the user hasn't seen onboarding, redirect them there first.
-      if (!hasSeenOnboarding && !isOnboarding) {
+    redirect: (context, state) {
+      final bool seenOnboarding = hasSeenOnboarding.value;
+      final bool loggedIn = isAuthenticated.value;
+      final String location = state.uri.toString();
+
+      final bool isOnboarding = location == '/onboarding';
+      final bool isAuthenticating =
+          location == '/signin' || location == '/signup';
+
+      // 1. Onboarding Logic
+      if (!seenOnboarding && !isOnboarding) {
         return '/onboarding';
       }
-      
-      // If the user is on the onboarding screen but has already seen it, send them to the right home page.
-      if (hasSeenOnboarding && isOnboarding) {
-        return isAuthenticated ? '/chat' : '/';
+      if (seenOnboarding && isOnboarding) {
+        // If they have seen onboarding and try to go there, send them to the root.
+        return '/';
       }
 
-      // If the user is not authenticated and is trying to access a protected route,
-      // redirect them to the sign-in page.
-      final isProtected = state.uri.toString().startsWith('/chat') ||
-                            state.uri.toString().startsWith('/profile') ||
-                            state.uri.toString().startsWith('/admin');
-
-      if (!isAuthenticated && isProtected) {
-        return '/signin';
-      }
-
-      // If the user is already authenticated and tries to go to the sign-in/sign-up page,
-      // redirect them to the logged-in chat screen.
-      if (isAuthenticated && isLoggingIn) {
+      // ✅  THIS IS THE FIX
+      // If the user is logged in and tries to go to the root guest page,
+      // redirect them to the main authenticated page inside the shell.
+      if (loggedIn && location == '/') {
         return '/chat';
       }
 
-      // No redirect needed.
+      // 2. Authentication Logic
+      final isProtected =
+          location.startsWith('/profile') || location.startsWith('/admin');
+      if (!loggedIn && isProtected) {
+        return '/signin';
+      }
+
+      if (loggedIn && isAuthenticating) {
+        return '/chat';
+      }
+
+      if (!loggedIn && location == '/chat') {
+        return '/signin';
+      }
+
+      // No redirect needed
       return null;
     },
 
-    // --- Error Handling ---
-    errorBuilder: (context, state) => const PlaceholderScreen(title: '404 - Page Not Found'),
+    errorBuilder: (context, state) =>
+        const PlaceholderScreen(title: '404 - Page Not Found'),
   );
 }
-
-
