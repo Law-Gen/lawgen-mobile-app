@@ -2,6 +2,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/signin_usecase.dart';
+import '../../domain/usecases/signout_usecase.dart';
 import '../../domain/usecases/signup_usecase.dart';
 import '../../domain/usecases/forget_password_usecase.dart';
 import '../../domain/usecases/getme_usecase.dart';
@@ -21,6 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ResetPasswordUseCase resetPasswordUseCase;
   final GetMeUseCase getMeUseCase;
   final CheckAuthStatusUseCase checkAuthStatusUseCase;
+  final SignOutUseCase signOutUseCase;
 
   AuthBloc({
     required this.signInUseCase,
@@ -31,6 +33,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.resetPasswordUseCase,
     required this.getMeUseCase,
     required this.checkAuthStatusUseCase,
+    required this.signOutUseCase,
   }) : super(AuthInitial()) {
     on<AppStarted>(_onAppStarted);
     on<SignUpRequested>(_onSignUpRequested);
@@ -39,6 +42,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ForgetPasswordRequested>(_onForgetPasswordRequested);
     on<VerifyOtpRequested>(_onVerifyOtpRequested);
     on<ResetPasswordRequested>(_onResetPasswordRequested);
+    on<LogoutRequested>(_onLogoutRequested);
   }
 
   Future<void> _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
@@ -85,6 +89,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (user) => emit(Authenticated()),
+    );
+  }
+
+  Future<void> _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await signOutUseCase();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(Unauthenticated()),
     );
   }
 

@@ -1,80 +1,69 @@
 part of 'chat_bloc.dart';
 
-sealed class ChatState extends Equatable {
+abstract class ChatState extends Equatable {
   const ChatState();
-
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
-final class ChatInitial extends ChatState {}
+class ChatInitial extends ChatState {}
 
-// chat loading state
-final class ChatLoading extends ChatState {}
+class ChatLoading extends ChatState {}
 
-// chat loaded state
-final class ChatLoaded extends ChatState {
-  final List<Conversation> conversations;
-
-  const ChatLoaded(this.conversations);
-
+class ChatHistoryLoaded extends ChatState {
+  final PaginatedChatSessions sessions;
+  const ChatHistoryLoaded(this.sessions);
   @override
-  List<Object> get props => [conversations];
+  List<Object?> get props => [sessions];
 }
 
-final class ChatMessages extends ChatState {
+class ChatSessionLoaded extends ChatState {
+  final String? sessionId;
   final List<Message> messages;
-  final bool
-  hasPendingUserMessage; // an unsent/awaiting server ack user message
-  final bool isStreaming; // AI response currently streaming
-  final String? streamingContent; // partial accumulated content
-  final String? conversationId; // active conversation id (null if brand new)
+  final bool isStreaming;
+  final bool isRecording;
+  final Stream<List<int>>? audioStreamToPlay;
 
-  const ChatMessages(
-    this.messages, {
-    this.hasPendingUserMessage = false,
+  const ChatSessionLoaded({
+    this.sessionId,
+    required this.messages,
     this.isStreaming = false,
-    this.streamingContent,
-    this.conversationId,
+    this.isRecording = false,
+    this.audioStreamToPlay,
   });
 
   @override
-  List<Object> get props => [
+  List<Object?> get props => [
+    sessionId,
     messages,
-    hasPendingUserMessage,
     isStreaming,
-    streamingContent ?? '',
-    conversationId ?? '',
+    isRecording,
+    audioStreamToPlay,
   ];
+
+  ChatSessionLoaded copyWith({
+    String? sessionId,
+    List<Message>? messages,
+    bool? isStreaming,
+    bool? isRecording,
+    Stream<List<int>>? audioStreamToPlay,
+    bool clearAudioStream = false,
+  }) {
+    return ChatSessionLoaded(
+      sessionId: sessionId ?? this.sessionId,
+      messages: messages ?? this.messages,
+      isStreaming: isStreaming ?? this.isStreaming,
+      isRecording: isRecording ?? this.isRecording,
+      audioStreamToPlay: clearAudioStream
+          ? null
+          : audioStreamToPlay ?? this.audioStreamToPlay,
+    );
+  }
 }
 
-// chat error state
-final class ChatError extends ChatState {
+class ChatError extends ChatState {
   final String message;
-  final List<Message> messages; // keep already shown messages
-  final bool canRetry;
-  final bool isPendingUserMessage; // whether last user msg not accepted
-
-  const ChatError(
-    this.message, {
-    this.messages = const [],
-    this.canRetry = false,
-    this.isPendingUserMessage = false,
-  });
-
+  const ChatError(this.message);
   @override
-  List<Object> get props => [message, messages, canRetry, isPendingUserMessage];
-}
-
-final class ChatOffline extends ChatState {
-  final String message;
-  final List<Message> messages;
-  final bool isPendingUserMessage;
-  const ChatOffline(
-    this.message, {
-    this.messages = const [],
-    this.isPendingUserMessage = false,
-  });
-  @override
-  List<Object> get props => [message, messages, isPendingUserMessage];
+  List<Object?> get props => [message];
 }

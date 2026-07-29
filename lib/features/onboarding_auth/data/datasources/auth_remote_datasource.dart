@@ -153,7 +153,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
             body: jsonEncode({'email': email}),
           )
           .timeout(const Duration(seconds: 30));
-      print("auth remote datasource: ${response.body}");
+
       // The API returns a 200 status code on success.
       if (response.statusCode != 200) {
         throw _handleError(response);

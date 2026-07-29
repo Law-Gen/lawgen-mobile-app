@@ -2,108 +2,42 @@ part of 'chat_bloc.dart';
 
 sealed class ChatEvent extends Equatable {
   const ChatEvent();
-
   @override
   List<Object?> get props => [];
 }
 
-class LoadConversations extends ChatEvent {}
+class LoadChatHistory extends ChatEvent {}
 
-class LoadConversationMessages extends ChatEvent {
-  final String conversationId;
-  const LoadConversationMessages(this.conversationId);
+class LoadChatSession extends ChatEvent {
+  final String sessionId;
+  const LoadChatSession(this.sessionId);
   @override
-  List<Object?> get props => [conversationId];
+  List<Object?> get props => [sessionId];
 }
 
-class SendUserQuestion extends ChatEvent {
-  final String question;
-  final String? language;
-  final String? conversationId;
-  const SendUserQuestion({
-    required this.question,
-    this.language,
-    this.conversationId,
-  });
+class StartNewChat extends ChatEvent {}
+
+class SendTextMessage extends ChatEvent {
+  final String query;
+  final String language;
+  const SendTextMessage({required this.query, required this.language});
   @override
-  List<Object?> get props => [question, language, conversationId];
+  List<Object?> get props => [query, language];
 }
 
-class SendFollowUpQuestion extends ChatEvent {
-  final String conversationId;
-  final String question;
-  final String? language;
-  final String? parentMessageId;
-  const SendFollowUpQuestion({
-    required this.conversationId,
-    required this.question,
-    this.language,
-    this.parentMessageId,
-  });
+class SendVoiceMessage extends ChatEvent {
+  final File audioFile;
+  final String language;
+  const SendVoiceMessage({required this.audioFile, required this.language});
   @override
-  List<Object?> get props => [
-    conversationId,
-    question,
-    language,
-    parentMessageId,
-  ];
+  List<Object?> get props => [audioFile, language];
 }
 
-class StreamResponseChunk extends ChatEvent {
-  final String conversationId;
-  final String aiMessageId;
-  final String chunk;
-  const StreamResponseChunk(this.conversationId, this.aiMessageId, this.chunk);
+class AudioPlaybackFinished extends ChatEvent {}
+
+class _ChatStreamEventReceived extends ChatEvent {
+  final StreamedChatResponse response;
+  const _ChatStreamEventReceived(this.response);
   @override
-  List<Object?> get props => [conversationId, aiMessageId, chunk];
-}
-
-class StreamResponseCompleted extends ChatEvent {
-  final String conversationId;
-  final String aiMessageId;
-  const StreamResponseCompleted(this.conversationId, this.aiMessageId);
-  @override
-  List<Object?> get props => [conversationId, aiMessageId];
-}
-
-class StreamResponseError extends ChatEvent {
-  final String conversationId;
-  final String error;
-  const StreamResponseError(this.conversationId, this.error);
-  @override
-  List<Object?> get props => [conversationId, error];
-}
-
-class CancelStreaming extends ChatEvent {
-  final String conversationId;
-  final String? aiMessageId;
-  const CancelStreaming(this.conversationId, {this.aiMessageId});
-  @override
-  List<Object?> get props => [conversationId, aiMessageId];
-}
-
-class DeleteConversation extends ChatEvent {
-  final String conversationId;
-  const DeleteConversation(this.conversationId);
-  @override
-  List<Object?> get props => [conversationId];
-}
-
-class PruneExpiredLocalData extends ChatEvent {
-  const PruneExpiredLocalData();
-}
-
-class RetryLastQuestion extends ChatEvent {
-  const RetryLastQuestion();
-}
-
-class ResetNewChat extends ChatEvent {
-  const ResetNewChat();
-}
-
-class SetActiveConversation extends ChatEvent {
-  final String conversationId;
-  const SetActiveConversation(this.conversationId);
-  @override
-  List<Object?> get props => [conversationId];
+  List<Object?> get props => [response];
 }

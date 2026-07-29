@@ -38,7 +38,7 @@ abstract class QuizRemoteDataSource {
 // --- Implementation ---
 
 const String _baseUrl = 'https://lawgen-backend-3ln1.onrender.com/api/v1';
-const String SECURE_AUTH_TOKEN_KEY = 'SECURE_AUTH_TOKEN_KEY'; // Example key
+const String SECURE_AUTH_TOKEN_KEY = 'ACCESS_TOKEN'; // Example key
 
 class QuizRemoteDataSourceImpl implements QuizRemoteDataSource {
   final http.Client client;
@@ -48,9 +48,9 @@ class QuizRemoteDataSourceImpl implements QuizRemoteDataSource {
 
   /// A private getter to construct request headers, including the auth token.
   Future<Map<String, String>> get _headers async {
-    // final token = await storage.read(key: SECURE_AUTH_TOKEN_KEY);
-    final token =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjI1LCJnZW5kZXIiOiJtYWxlIiwiZXhwIjoxNzU3MTgzODA3LCJpYXQiOjE3NTcxNjU4MDd9.3EpiHFIAdm1MQtYOTd1uy6weZh1PYnB2g8v31gC-E5w';
+    final token = await storage.read(key: SECURE_AUTH_TOKEN_KEY);
+    // final token =
+    //     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjhiOTg4OWZhNzViMGFlMzA3NWZhMDE5Iiwicm9sZSI6ImFkbWluIiwicGxhbiI6ImVudGVycHJpc2UiLCJhZ2UiOjI1LCJnZW5kZXIiOiJtYWxlIiwiZXhwIjoxNzU3MTgzODA3LCJpYXQiOjE3NTcxNjU4MDd9.3EpiHFIAdm1MQtYOTd1uy6weZh1PYnB2g8v31gC-E5w';
     final headers = {'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';

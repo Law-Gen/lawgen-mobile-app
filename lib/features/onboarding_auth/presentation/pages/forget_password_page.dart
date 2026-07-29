@@ -6,6 +6,14 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
+// -- Design Constants --
+const Color kBackgroundColor = Color(0xFFFFF8F6);
+const Color kPrimaryTextColor = Color(0xFF4A4A4A);
+const Color kSecondaryTextColor = Color(0xFF7A7A7A);
+const Color kCardBackgroundColor = Colors.white;
+const Color kButtonColor = Color(0xFF8B572A);
+const Color kShadowColor = Color(0xFFD3C1B3);
+
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -16,6 +24,7 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
+  // Amharic toggle logic remains unchanged
   bool _isAmharic = false;
 
   @override
@@ -24,6 +33,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
+  // --- LOGIC (UNCHANGED) ---
   void _submit() {
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(
@@ -32,23 +42,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      labelText: hint,
-      filled: true,
-      fillColor: const Color(0xFFFFFFFF),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFD8DADC)),
-      ),
-      prefixIcon: const Icon(Icons.email_outlined),
-    );
-  }
-
+  // --- UI AND STYLING (UPDATED) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: kBackgroundColor, // UPDATED
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -74,39 +72,38 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => context.go('/signin'),
-                          ),
-                          SvgPicture.asset(
-                            'assets/logo/logo.svg',
-                            height: 32,
-                            width: 32,
-                          ),
-                        ],
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: kPrimaryTextColor,
+                          ), // UPDATED
+                          onPressed: () => context.go('/signin'),
+                        ),
                       ),
                       const SizedBox(height: 40),
 
                       // Title
                       Text(
                         _isAmharic ? "የይለፍ ቃል ረስተው?" : "Forgot Password?",
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: kPrimaryTextColor, // UPDATED
+                            ),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
                       Text(
                         _isAmharic
                             ? "እባክዎን የኢሜል አድራሻዎን ያስገቡ።"
-                            : "Enter your email address to reset your password.",
+                            : "Enter your email to receive a reset code.", // UPDATED text for clarity
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.black54,
+                          color: kSecondaryTextColor, // UPDATED
                         ),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
 
@@ -123,41 +120,33 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           return null;
                         },
                         decoration: _inputDecoration(
+                          // UPDATED
                           _isAmharic ? "የኢሜል አድራሻ" : "Email",
                         ),
                       ),
                       const SizedBox(height: 32),
 
                       // Continue Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          // Disable the button when loading
-                          onPressed: isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0A1D37),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 3,
-                                  ),
-                                )
-                              : Text(
-                                  _isAmharic ? "ቀጥል" : "Continue",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : _submit,
+                        style: _primaryButtonStyle(), // UPDATED
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 3,
                                 ),
-                        ),
+                              )
+                            : Text(
+                                _isAmharic ? "ቀጥል" : "Continue",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -169,4 +158,31 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ),
     );
   }
+
+  // --- HELPER STYLING METHODS (UPDATED) ---
+
+  InputDecoration _inputDecoration(String label) => InputDecoration(
+    labelText: label,
+    labelStyle: const TextStyle(color: kSecondaryTextColor),
+    prefixIcon: const Icon(Icons.email_outlined, color: kButtonColor),
+    filled: true,
+    fillColor: kCardBackgroundColor,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: kButtonColor, width: 2),
+    ),
+  );
+
+  ButtonStyle _primaryButtonStyle() => ElevatedButton.styleFrom(
+    backgroundColor: kButtonColor,
+    foregroundColor: Colors.white,
+    elevation: 4,
+    shadowColor: kShadowColor,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+  );
 }

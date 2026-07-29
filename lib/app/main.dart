@@ -4,13 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_bloc.dart';
 import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_event.dart';
-import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_state.dart'; // Import AuthState
+import 'package:lawgen/features/onboarding_auth/presentation/bloc/auth_state.dart';
 
 import '../features/LegalAidDirectory/injection_container.dart';
 import '../features/catalog/catalog_injection.dart';
+// Updated: Correctly points to the new dependency setup for chat.
 import '../features/chat/chat_dependency.dart';
-import '../features/chat/data/models/conversation_model.dart';
-import '../features/chat/data/models/message_model.dart';
+// Removed: Old Hive models are no longer part of the new chat feature.
+// import '../features/chat/data/models/conversation_model.dart';
+// import '../features/chat/data/models/message_model.dart';
 import '../features/quize/quiz_injection.dart';
 import 'dependency_injection.dart' as di;
 import 'router.dart';
@@ -18,32 +20,25 @@ import 'router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Init Hive & register adapters
+  // Init Hive
   await Hive.initFlutter();
-  if (!Hive.isAdapterRegistered(1)) {
-    Hive.registerAdapter(ConversationModelAdapter());
-  }
-  if (!Hive.isAdapterRegistered(2)) {
-    Hive.registerAdapter(MessageSenderAdapter());
-  }
-  if (!Hive.isAdapterRegistered(3)) {
-    Hive.registerAdapter(MessageModelAdapter());
-  }
+
+  // Removed: The Hive adapters for ConversationModel and MessageModel are no longer
+  // needed as the new chat feature does not use Hive for local storage.
+  // Other app features can still register their adapters here.
 
   // Feature DI setup
-  await setupChatFeatureDependencies();
   await di.init();
+  await setupChatFeatureDependencies(); // This sets up the new chat feature's dependencies.
   await initLegalAid();
   await initQuiz();
   await initCatalog();
 
-  // MODIFIED: We need the full AppRouter instance, not just its router object.
   final appRouter = AppRouter();
   runApp(MyApp(appRouter: appRouter));
 }
 
 class MyApp extends StatelessWidget {
-  // MODIFIED: Changed from GoRouter to the AppRouter class
   final AppRouter appRouter;
   const MyApp({super.key, required this.appRouter});
 
@@ -60,24 +55,21 @@ class MyApp extends StatelessWidget {
     );
 
     return MultiRepositoryProvider(
+      // The chatRepositoryProviders list is provided from your updated chat_dependency.dart
       providers: [...chatRepositoryProviders],
       child: MultiBlocProvider(
         providers: [
+          // The chatBlocProviders list is also from your updated chat_dependency.dart
           ...chatBlocProviders,
           BlocProvider<AuthBloc>(
-            // The AppStarted event is dispatched here to check auth status on startup.
             create: (_) => di.sl<AuthBloc>()..add(AppStarted()),
           ),
         ],
-        // NEW: This BlocListener is the "bridge" between the AuthBloc and the AppRouter.
         child: BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
-            // When the BLoC's state changes, we update the router's ValueNotifier.
-            // This will automatically trigger GoRouter's redirect logic.
             if (state is Authenticated) {
               appRouter.isAuthenticated.value = true;
             } else if (state is Unauthenticated || state is AuthError) {
-              // Also treat errors as an unauthenticated state for routing safety.
               appRouter.isAuthenticated.value = false;
             }
           },
@@ -87,17 +79,13 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               useMaterial3: true,
               colorScheme: lawgenColorScheme,
-              scaffoldBackgroundColor:
-                  lawgenColorScheme.surface, // Corrected from .background
+              scaffoldBackgroundColor: lawgenColorScheme.surface,
               appBarTheme: AppBarTheme(
-                backgroundColor:
-                    lawgenColorScheme.surface, // Corrected from .background
-                foregroundColor:
-                    lawgenColorScheme.onSurface, // Corrected from .onBackground
+                backgroundColor: lawgenColorScheme.surface,
+                foregroundColor: lawgenColorScheme.onSurface,
                 elevation: 0,
                 titleTextStyle: TextStyle(
-                  color: lawgenColorScheme
-                      .onSurface, // Corrected from .onBackground
+                  color: lawgenColorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -113,7 +101,6 @@ class MyApp extends StatelessWidget {
                 ),
               ),
             ),
-            // MODIFIED: Get the router config from our AppRouter instance.
             routerConfig: appRouter.router,
           ),
         ),
